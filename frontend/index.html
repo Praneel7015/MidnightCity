@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Midnight City</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body data-mode="garage">
+    <canvas id="view"></canvas>
+    <div id="minimap-frame"></div>
+    <div id="boot-error" hidden></div>
+
+    <header class="top-mark">
+      <p class="eyebrow">AWS Weekend Creative Challenge</p>
+      <h1>Midnight City</h1>
+    </header>
+
+    <section id="garage" class="panel">
+      <p class="kicker">Garage</p>
+      <h2 id="livery-name">Harbor Cyan</h2>
+      <p id="livery-tag" class="tagline">Wet streets. Cold light. Keep the revs up.</p>
+
+      <div class="swatches" aria-label="Paint presets">
+        <button class="swatch" data-preset="0" style="--c:#7a1fff" title="Voltage Violet"></button>
+        <button class="swatch" data-preset="1" style="--c:#14c8d4" title="Harbor Cyan"></button>
+        <button class="swatch" data-preset="2" style="--c:#ff3b1f" title="Ember"></button>
+        <button class="swatch" data-preset="3" style="--c:#e8e4f0" title="Ghost Pearl"></button>
+        <button class="swatch" data-preset="4" style="--c:#0b6b4f" title="Midnight Jade"></button>
+      </div>
+
+      <label class="check"><input id="opt-spoiler" type="checkbox" checked /> Spoiler</label>
+      <label class="check"><input id="opt-headlights" type="checkbox" checked /> Headlights</label>
+
+      <button id="btn-ai" class="ghost" type="button">AI Paint Job</button>
+      <p id="livery-status" class="status">Nova is optional. The circuit runs without AWS.</p>
+      <button id="btn-race" class="go" type="button">Drop In</button>
+      <p class="hint">W A S D to drive · Space brake · R reset</p>
+    </section>
+
+    <section id="hud">
+      <div class="speedo">
+        <span id="hud-speed">000</span>
+        <small>KPH</small>
+        <div class="speed-track"><i id="speed-fill"></i></div>
+      </div>
+      <div class="times">
+        <div><label>Lap</label><b id="hud-lap">0</b></div>
+        <div><label>Time</label><b id="hud-time">00:00.00</b></div>
+        <div><label>Best</label><b id="hud-best">--:--.--</b></div>
+      </div>
+      <button id="btn-garage" type="button">Garage</button>
+      <button id="btn-reset" type="button">Reset</button>
+    </section>
+
+    <div id="touch" class="touch">
+      <div class="steer">
+        <button id="btn-left" type="button">◀</button>
+        <button id="btn-right" type="button">▶</button>
+      </div>
+      <div class="pedals">
+        <button id="btn-brake" type="button">BRAKE</button>
+        <button id="btn-reverse" type="button">S</button>
+        <button id="btn-gas" type="button">GAS</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "midnight-city",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Midnight City — 3D browser arcade racer for the AWS Weekend Creative Challenge",
+  "scripts": {
+    "postinstall": "npm install --prefix frontend && npm install --prefix backend",
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "api": "npm start --prefix backend",
+    "dry-run": "node scripts/dry-run.mjs"
+  }
+}
