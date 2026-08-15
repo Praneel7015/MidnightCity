@@ -57,7 +57,7 @@ const NPC_PAINT = [
 const _up = new THREE.Vector3(0, 1, 0);
 const _right = new THREE.Vector3();
 
-export function createTraffic(scene, track, count = 7) {
+export function createTraffic(scene, track, count = 10) {
   const length = track.curve.getLength();
   const racers = [];
 
@@ -74,14 +74,19 @@ export function createTraffic(scene, track, count = 7) {
     scene.add(marker);
 
     const dummy = createVehicle(new THREE.Vector3(), 0);
+    // Spread cars evenly around the track so the pack never bunches
+    const t = (i / count) % 1;
+    // Mix of very slow, medium and fast — player can lap some and be lapped by others
+    const cruiseSpeeds = [12, 18, 24, 30, 36, 22, 28, 14, 20, 34];
+    const cruise = cruiseSpeeds[i % cruiseSpeeds.length];
     racers.push({
       car,
       marker,
       dummy,
-      t: ((i + 1) * 0.118) % 1,
-      lane: (i % 2 === 0 ? 1 : -1) * (2.6 + (i % 3) * 1.15),
-      cruise: 16 + ((i * 7) % 30),
-      pace: 0.82 + (i % 4) * 0.09,
+      t,
+      lane: (i % 2 === 0 ? 1 : -1) * (2.4 + (i % 3) * 1.2),
+      cruise,
+      pace: 0.88 + ((i * 3) % 5) * 0.06,
       paint: NPC_PAINT[i % NPC_PAINT.length],
     });
     applyLivery(car, racers[i].paint);

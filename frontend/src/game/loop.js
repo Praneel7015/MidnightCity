@@ -44,7 +44,7 @@ export async function startGame(canvas) {
   const car = await loadCar(scene);
   syncCarMesh(car, vehicle, 0.016);
 
-  const traffic = createTraffic(scene, track, mobile ? 5 : 7);
+  const traffic = createTraffic(scene, track, mobile ? 6 : 10);
   restyleTraffic(traffic, { name: "Harbor Cyan", bodyHex: "#14c8d4" });
 
   const minimap = createMinimap(track, vehicle);
