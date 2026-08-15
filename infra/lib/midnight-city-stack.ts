@@ -19,7 +19,7 @@ export class MidnightCityStack extends cdk.Stack {
       entry: path.join(__dirname, "../../backend/lambdas/livery/index.mjs"),
       handler: "handler",
       runtime: lambdaBase.Runtime.NODEJS_20_X,
-      timeout: cdk.Duration.seconds(15),
+      timeout: cdk.Duration.seconds(20),
       memorySize: 256,
       depsLockFilePath: path.join(__dirname, "../../backend/package-lock.json"),
       projectRoot: path.join(__dirname, "../../backend"),
@@ -29,13 +29,27 @@ export class MidnightCityStack extends cdk.Stack {
       },
       environment: {
         BEDROCK_MODEL_ID: "apac.amazon.nova-micro-v1:0",
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
       },
     });
 
     liveryFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["bedrock:InvokeModel"],
-        resources: ["*"],
+        sid: "BedrockNovaInvoke",
+        actions: [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+          "bedrock:Converse",
+          "bedrock:ConverseStream",
+        ],
+        resources: [
+          `arn:aws:bedrock:${this.region}::foundation-model/amazon.nova-micro-v1:0`,
+          `arn:aws:bedrock:${this.region}::foundation-model/amazon.nova*`,
+          "arn:aws:bedrock:*::foundation-model/amazon.nova-micro-v1:0",
+          "arn:aws:bedrock:*::foundation-model/amazon.nova*",
+          `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/*`,
+          `arn:aws:bedrock:${this.region}:${this.account}:application-inference-profile/*`,
+        ],
       })
     );
 
@@ -51,6 +65,8 @@ export class MidnightCityStack extends cdk.Stack {
     const integration = new apigwIntegrations.HttpLambdaIntegration("LiveryIntegration", liveryFn);
     httpApi.addRoutes({ path: "/livery", methods: [apigw.HttpMethod.POST], integration });
     httpApi.addRoutes({ path: "/livery", methods: [apigw.HttpMethod.GET], integration });
+    httpApi.addRoutes({ path: "/commentary", methods: [apigw.HttpMethod.POST], integration });
+    httpApi.addRoutes({ path: "/commentary", methods: [apigw.HttpMethod.GET], integration });
 
     const siteBucket = new s3.Bucket(this, "MidnightCityFrontendBucket", {
       removalPolicy: cdk.RemovalPolicy.RETAIN,

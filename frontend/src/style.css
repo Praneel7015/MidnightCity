@@ -167,10 +167,16 @@ body {
 }
 
 .status,
-.hint {
+.hint,
+.credit {
   margin: 0.35rem 0 0;
   font-size: 0.78rem;
   color: var(--muted);
+}
+
+.credit {
+  font-size: 0.68rem;
+  opacity: 0.85;
 }
 
 #hud {
@@ -225,6 +231,14 @@ body {
 
 .times b {
   color: var(--ink);
+}
+
+.callout {
+  margin: 0.55rem 0 0;
+  max-width: 28rem;
+  color: var(--cyan);
+  font-style: italic;
+  letter-spacing: 0.04em;
 }
 
 #hud button {

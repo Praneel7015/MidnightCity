@@ -13,7 +13,7 @@ const _tmp = new THREE.Vector3();
 const _tmp2 = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 
-export function createTrack(textureLoader) {
+export function createTrack() {
   const points = WAYPOINTS.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
   const curve = new THREE.CatmullRomCurve3(points, true, "catmullrom", 0.15);
 
@@ -22,35 +22,32 @@ export function createTrack(textureLoader) {
     const t = i / TRACK_SEGMENTS;
     const position = curve.getPointAt(t);
     const tangent = curve.getTangentAt(t).normalize();
-    const right = _tmp.crossVectors(_up, tangent).normalize().clone();
-    if (right.lengthSq() < 0.01) {
-      right.set(1, 0, 0);
-    }
+    const right = new THREE.Vector3().crossVectors(_up, tangent);
+    if (right.lengthSq() < 0.0001) right.set(1, 0, 0);
+    else right.normalize();
     samples.push({ t, position, tangent, right });
   }
 
   const asphalt = makeAsphaltTexture();
-  asphalt.repeat.set(1, 40);
-  const roadGeo = buildRibbon(samples, ROAD_HALF_WIDTH, 0.04);
-  const roadMat = new THREE.MeshStandardMaterial({
-    color: 0x889099,
+  asphalt.repeat.set(1, 24);
+  const roadGeo = buildRibbon(samples, ROAD_HALF_WIDTH, 0.12);
+  const roadMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
     map: asphalt,
-    roughness: 0.92,
-    metalness: 0.08,
+    side: THREE.DoubleSide,
   });
   const road = new THREE.Mesh(roadGeo, roadMat);
-  road.receiveShadow = true;
 
-  const railGeo = buildRails(samples, ROAD_HALF_WIDTH + 0.25, RAIL_HEIGHT);
-  const railMat = new THREE.MeshStandardMaterial({
+  const railGeo = buildKerbs(samples, ROAD_HALF_WIDTH + 0.15, RAIL_HEIGHT);
+  const railMat = new THREE.MeshLambertMaterial({
     color: 0x3df0ff,
-    emissive: 0x0a3a44,
-    emissiveIntensity: 0.65,
-    roughness: 0.4,
-    metalness: 0.6,
+    emissive: 0x3df0ff,
+    emissiveIntensity: 0.85,
+    side: THREE.DoubleSide,
   });
   const rails = new THREE.Mesh(railGeo, railMat);
 
+  const bed = buildRoadBed(samples);
   const stripe = buildStartFinish(samples[0], makeChevronsTexture());
   const tunnel = buildTunnel(samples);
 
@@ -58,42 +55,13 @@ export function createTrack(textureLoader) {
   linePts.push(linePts[0].clone());
   const miniLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(linePts),
-    new THREE.LineBasicMaterial({ color: 0x3df0ff, linewidth: 2 })
+    new THREE.LineBasicMaterial({ color: 0x3df0ff })
   );
   miniLine.layers.set(1);
-  const miniRoad = new THREE.Mesh(
-    buildRibbon(
-      samples.map((s) => ({
-        ...s,
-        position: s.position.clone().add(new THREE.Vector3(0, 0.9, 0)),
-      })),
-      ROAD_HALF_WIDTH,
-      0
-    ),
-    new THREE.MeshBasicMaterial({ color: 0x5a6678, fog: false })
-  );
-  miniRoad.layers.set(1);
 
   const group = new THREE.Group();
   group.name = "track";
-  group.add(road, rails, stripe, tunnel, miniRoad);
-
-  if (textureLoader) {
-    textureLoader.load(
-      "/assets/asphalt_02_diff_1k.jpg",
-      (tex) => {
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(1, 48);
-        tex.anisotropy = 8;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        roadMat.map = tex;
-        roadMat.needsUpdate = true;
-      },
-      undefined,
-      () => {}
-    );
-  }
+  group.add(bed, road, rails, stripe, tunnel);
 
   return {
     group,
@@ -102,6 +70,7 @@ export function createTrack(textureLoader) {
     miniLine,
     roadHalf: ROAD_HALF_WIDTH,
     colliderRadius: COLLIDER_RADIUS,
+    _last: 0,
   };
 }
 
@@ -132,7 +101,7 @@ function buildRibbon(samples, halfW, yLift) {
     const b = i * 2 + 1;
     const c = ((i + 1) % n) * 2;
     const d = ((i + 1) % n) * 2 + 1;
-    indices.push(a, c, b, b, c, d);
+    indices.push(a, b, d, a, d, c);
   }
 
   const geo = new THREE.BufferGeometry();
@@ -144,42 +113,72 @@ function buildRibbon(samples, halfW, yLift) {
   return geo;
 }
 
-function buildRails(samples, offset, height) {
+function buildKerbs(samples, offset, height) {
   const n = samples.length;
-  const geo = new THREE.BufferGeometry();
   const pos = [];
   const idx = [];
   for (let i = 0; i < n; i++) {
     const s = samples[i];
+    const s2 = samples[(i + 1) % n];
     for (const sign of [1, -1]) {
-      const inner = s.position.clone().addScaledVector(s.right, sign * (offset - 0.16));
-      const outer = s.position.clone().addScaledVector(s.right, sign * (offset + 0.16));
-      const i2 = (i + 1) % n;
-      const s2 = samples[i2];
-      const inner2 = s2.position.clone().addScaledVector(s2.right, sign * (offset - 0.16));
-      const outer2 = s2.position.clone().addScaledVector(s2.right, sign * (offset + 0.16));
-      const b = pos.length / 3;
-      const pts = [
-        inner,
-        outer,
-        inner.clone().setY(inner.y + height),
-        outer.clone().setY(outer.y + height),
-        inner2,
-        outer2,
-        inner2.clone().setY(inner2.y + height),
-        outer2.clone().setY(outer2.y + height),
-      ];
-      for (const p of pts) pos.push(p.x, p.y, p.z);
-      const faces = [
-        0, 1, 3, 0, 3, 2, 1, 5, 7, 1, 7, 3, 0, 2, 6, 0, 6, 4, 2, 3, 7, 2, 7, 6, 4, 6, 7, 4, 7, 5,
-      ];
-      for (const f of faces) idx.push(b + f);
+      const a = s.position.clone().addScaledVector(s.right, sign * offset);
+      const b = a.clone();
+      b.y += height;
+      const c = s2.position.clone().addScaledVector(s2.right, sign * offset);
+      const d = c.clone();
+      d.y += height;
+      const base = pos.length / 3;
+      pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, d.x, d.y, d.z);
+      if (sign > 0) idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+      else idx.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
     }
   }
+  const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   geo.setIndex(idx);
   geo.computeVertexNormals();
   return geo;
+}
+
+function buildRoadBed(samples) {
+  const group = new THREE.Group();
+  const deck = new THREE.Mesh(
+    buildRibbon(samples, ROAD_HALF_WIDTH + 6.5, -0.55),
+    new THREE.MeshLambertMaterial({ color: 0x1c1828, side: THREE.DoubleSide })
+  );
+  group.add(deck);
+
+  const n = samples.length;
+  const pos = [];
+  const idx = [];
+  const floorY = -0.15;
+  for (let i = 0; i < n; i++) {
+    const s = samples[i];
+    const s2 = samples[(i + 1) % n];
+    for (const sign of [1, -1]) {
+      const topA = s.position.clone().addScaledVector(s.right, sign * (ROAD_HALF_WIDTH + 6.5));
+      const topB = s2.position.clone().addScaledVector(s2.right, sign * (ROAD_HALF_WIDTH + 6.5));
+      const botA = topA.clone();
+      botA.y = floorY;
+      const botB = topB.clone();
+      botB.y = floorY;
+      const base = pos.length / 3;
+      pos.push(topA.x, topA.y, topA.z, botA.x, botA.y, botA.z, topB.x, topB.y, topB.z, botB.x, botB.y, botB.z);
+      if (sign > 0) idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+      else idx.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+    }
+  }
+  const wallGeo = new THREE.BufferGeometry();
+  wallGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  wallGeo.setIndex(idx);
+  wallGeo.computeVertexNormals();
+  group.add(
+    new THREE.Mesh(
+      wallGeo,
+      new THREE.MeshLambertMaterial({ color: 0x241c32, side: THREE.DoubleSide })
+    )
+  );
+  return group;
 }
 
 function buildStartFinish(sample, tex) {
@@ -204,9 +203,9 @@ function buildStartFinish(sample, tex) {
 function buildTunnel(samples) {
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x151520,
-    roughness: 0.9,
-    metalness: 0.2,
+    color: 0x2a2438,
+    roughness: 0.85,
+    metalness: 0.15,
     side: THREE.DoubleSide,
   });
   const neon = new THREE.MeshStandardMaterial({
@@ -218,9 +217,11 @@ function buildTunnel(samples) {
   const [t0, t1] = TUNNEL_T;
   const half = ROAD_HALF_WIDTH + 4.5;
   const height = 7.5;
-  for (const s of samples) {
+  let n = 0;
+  for (let i = 0; i < samples.length; i += 6) {
+    const s = samples[i];
     if (s.t < t0 || s.t > t1) continue;
-    if (Math.floor(s.t * 200) % 2 !== 0) continue;
+    if (n++ > 10) break;
     const arch = new THREE.Mesh(new THREE.BoxGeometry(half * 2 + 1.2, 0.35, 2.2), neon);
     arch.position.copy(s.position);
     arch.position.y += height;
@@ -241,16 +242,29 @@ function buildTunnel(samples) {
 }
 
 export function closestSample(track, pos) {
-  let best = 0;
-  let bestD = Infinity;
   const samples = track.samples;
-  for (let i = 0; i < samples.length; i++) {
+  const n = samples.length;
+  let best = track._last || 0;
+  let bestD = pos.distanceToSquared(samples[best].position);
+  const window = 18;
+  for (let k = -window; k <= window; k++) {
+    const i = (best + k + n) % n;
     const d = pos.distanceToSquared(samples[i].position);
     if (d < bestD) {
       bestD = d;
       best = i;
     }
   }
+  if (bestD > 6400) {
+    for (let i = 0; i < n; i++) {
+      const d = pos.distanceToSquared(samples[i].position);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+  }
+  track._last = best;
   return samples[best];
 }
 
@@ -287,7 +301,7 @@ export function constrainToTrack(track, vehicle, dt) {
     vehicle.stuckTime = 0;
   }
 
-  vehicle.sampleIndex = track.samples.indexOf(sample);
+  vehicle.sampleIndex = track._last || 0;
   vehicle.t = sample.t;
   return sample;
 }

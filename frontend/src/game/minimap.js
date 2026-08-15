@@ -2,9 +2,8 @@ import * as THREE from "three";
 
 export function createMinimap(track, vehicle) {
   const span = 980;
-  const camera = new THREE.OrthographicCamera(-span, span, span, -span, 1, 800);
-  camera.layers.enable(0);
-  camera.layers.enable(1);
+  const camera = new THREE.OrthographicCamera(-span, span, span, -span, 1, 400);
+  camera.layers.set(1);
 
   const chevron = new THREE.Mesh(
     new THREE.ConeGeometry(18, 48, 3),

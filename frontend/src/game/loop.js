@@ -15,23 +15,25 @@ import { createMinimap, updateMinimap, renderMinimap } from "./minimap.js";
 import { createControls, consumeReset, isMobileUi } from "./controls.js";
 import { bindGarage } from "../ui/garage.js";
 import { bindHud } from "../ui/hud.js";
+import { unlockAudio, announce, bindMute } from "./audio.js";
+import { createTraffic, restyleTraffic, stepTraffic } from "./traffic.js";
 
 export async function startGame(canvas) {
+  const mobile = isMobileUi();
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: !mobile,
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1 : 1.25));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.15;
   renderer.setClearColor(0x0a0814, 1);
 
   const scene = new THREE.Scene();
   const camera = createChaseCamera();
-  const loader = new THREE.TextureLoader();
-  const track = createTrack(loader);
+  const track = createTrack();
   scene.add(track.group);
   scene.add(track.miniLine);
   createCity(scene, track);
@@ -42,21 +44,35 @@ export async function startGame(canvas) {
   const car = await loadCar(scene);
   syncCarMesh(car, vehicle, 0.016);
 
+  const traffic = createTraffic(scene, track, mobile ? 5 : 7);
+  restyleTraffic(traffic, { name: "Harbor Cyan", bodyHex: "#14c8d4" });
+
   const minimap = createMinimap(track, vehicle);
   scene.add(minimap.chevron);
 
   const input = createControls();
   const hud = bindHud();
+  bindMute();
   let mode = "garage";
+  let liveryName = "Harbor Cyan";
+  let lastLap = 0;
+  let lastSpeedCall = 0;
 
   bindGarage({
-    onLivery: (livery) => applyLivery(car, livery),
+    onLivery: (livery) => {
+      applyLivery(car, livery);
+      liveryName = livery.name || liveryName;
+      restyleTraffic(traffic, livery);
+    },
     onRace: () => {
       mode = "race";
       document.body.dataset.mode = "race";
       vehicle.lapTime = 0;
       vehicle.armed = false;
       vehicle.checkpoint = 0;
+      lastLap = vehicle.lap;
+      unlockAudio();
+      announce("start", { livery: liveryName, kph: 0, lap: vehicle.lap });
     },
     onGarage: () => {
       mode = "garage";
@@ -86,23 +102,41 @@ export async function startGame(canvas) {
     garageTime += dt;
 
     if (mode === "race") {
-      if (consumeReset(input)) resetVehicle(vehicle, track);
+      if (consumeReset(input)) {
+        resetVehicle(vehicle, track);
+        announce("reset", { livery: liveryName, kph: 0, lap: vehicle.lap });
+      }
       stepVehicle(vehicle, input, dt);
       constrainToTrack(track, vehicle, dt);
       vehicle.lapTime += dt;
       updateLaps(vehicle);
+      if (vehicle.lap > lastLap) {
+        lastLap = vehicle.lap;
+        announce("lap", {
+          livery: liveryName,
+          kph: Math.abs(vehicle.speed) * 6.2,
+          lap: vehicle.lap,
+        });
+      }
+      const kph = Math.abs(vehicle.speed) * 6.2;
+      if (kph > 210 && garageTime - lastSpeedCall > 9) {
+        lastSpeedCall = garageTime;
+        announce("speed", { livery: liveryName, kph, lap: vehicle.lap });
+      }
       syncCarMesh(car, vehicle, dt);
-      updateChaseCamera(camera, vehicle, dt);
+      updateChaseCamera(camera, vehicle, dt, track);
       hud.update(vehicle);
     } else {
       syncCarMesh(car, vehicle, dt);
       updateGarageCamera(camera, car, garageTime);
     }
 
+    stepTraffic(traffic, track, mode === "race" ? vehicle : null, dt);
+
     updateMinimap(minimap, vehicle);
     renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.render(scene, camera);
-    renderMinimap(renderer, scene, minimap, isMobileUi());
+    renderMinimap(renderer, scene, minimap, mobile);
     requestAnimationFrame(tick);
   }
 

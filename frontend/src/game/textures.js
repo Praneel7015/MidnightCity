@@ -2,27 +2,36 @@ import * as THREE from "three";
 
 export function makeAsphaltTexture() {
   const c = document.createElement("canvas");
-  c.width = 512;
-  c.height = 512;
+  c.width = 256;
+  c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#1a1a22";
-  g.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 14000; i++) {
-    const n = 18 + Math.floor(Math.random() * 22);
-    g.fillStyle = `rgb(${n},${n},${n + 4})`;
-    g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+  g.fillStyle = "#7a7f8c";
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 4000; i++) {
+    const n = 70 + Math.floor(Math.random() * 40);
+    g.fillStyle = `rgb(${n},${n},${n + 6})`;
+    g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
   }
-  g.strokeStyle = "rgba(230,230,210,0.85)";
-  g.lineWidth = 10;
-  g.setLineDash([42, 36]);
+  g.strokeStyle = "#e8e2b8";
+  g.lineWidth = 8;
+  g.setLineDash([28, 22]);
   g.beginPath();
-  g.moveTo(256, 0);
-  g.lineTo(256, 512);
+  g.moveTo(128, 0);
+  g.lineTo(128, 256);
+  g.stroke();
+  g.setLineDash([]);
+  g.strokeStyle = "#d0d4de";
+  g.lineWidth = 6;
+  g.beginPath();
+  g.moveTo(14, 0);
+  g.lineTo(14, 256);
+  g.moveTo(242, 0);
+  g.lineTo(242, 256);
   g.stroke();
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.anisotropy = 8;
+  tex.anisotropy = 4;
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -53,8 +62,8 @@ export function makeWindowTexture() {
 
 export function makeSkyTexture() {
   const c = document.createElement("canvas");
-  c.width = 2048;
-  c.height = 1024;
+  c.width = 1024;
+  c.height = 512;
   const g = c.getContext("2d");
   const grd = g.createLinearGradient(0, 0, 0, c.height);
   grd.addColorStop(0, "#02010a");
@@ -67,7 +76,7 @@ export function makeSkyTexture() {
   g.fillStyle = grd;
   g.fillRect(0, 0, c.width, c.height);
 
-  for (let i = 0; i < 900; i++) {
+  for (let i = 0; i < 350; i++) {
     const y = Math.random() * c.height * 0.58;
     const x = Math.random() * c.width;
     const s = Math.random() * 1.7 + 0.4;

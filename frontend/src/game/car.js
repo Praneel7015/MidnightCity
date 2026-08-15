@@ -1,14 +1,13 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { checkpointCount } from "./trackData.js";
 
-export const MAX_SPEED = 36;
-export const REVERSE_MAX = 12;
-const ACCEL = 22;
-const BRAKE = 42;
-const REVERSE_ACCEL = 16;
-const COAST = 7;
-const STEER_RATE = 2.15;
+export const MAX_SPEED = 58;
+export const REVERSE_MAX = 14;
+const ACCEL = 38;
+const BRAKE = 55;
+const REVERSE_ACCEL = 18;
+const COAST = 6;
+const STEER_RATE = 2.05;
 
 export function createVehicle(startPos, heading) {
   return {
@@ -127,58 +126,63 @@ export function syncCarMesh(car, v, dt) {
   }
 }
 
-export async function loadCar(scene) {
-  const loader = new GLTFLoader();
-  try {
-    const gltf = await loader.loadAsync("/assets/car.glb");
-    const root = gltf.scene;
-    root.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(root);
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-    root.position.sub(center);
-    root.position.y -= box.min.y;
-    const targetLen = 4.4;
-    const s = targetLen / Math.max(size.z, size.x, 0.001);
-    root.scale.setScalar(s);
-
-    let bodyMat = null;
-    root.traverse((o) => {
-      if (o.isMesh && o.material && o.material.color && !bodyMat) {
-        bodyMat = o.material;
-        if (Array.isArray(bodyMat)) bodyMat = bodyMat[0];
-      }
-    });
-    const wrapper = new THREE.Group();
-    wrapper.add(root);
-    wrapper.userData.materials = {
-      body: bodyMat || new THREE.MeshStandardMaterial({ color: 0xff2d6a }),
-      rim: bodyMat,
-      glow: bodyMat,
-    };
-    wrapper.userData.wheels = [];
-    wrapper.userData.frontWheels = [];
-    addUnderglow(wrapper);
-    scene.add(wrapper);
-    return wrapper;
-  } catch {
-    const car = createProceduralCar();
-    scene.add(car);
-    return car;
-  }
+export async function loadCar(scene, opts) {
+  const car = createProceduralCar(opts);
+  scene.add(car);
+  return car;
 }
 
-export function createProceduralCar() {
+function coupeProfile() {
+  const s = new THREE.Shape();
+  s.moveTo(-2.18, 0.2);
+  s.lineTo(2.08, 0.2);
+  s.bezierCurveTo(2.38, 0.2, 2.48, 0.36, 2.4, 0.52);
+  s.lineTo(2.18, 0.64);
+  s.lineTo(0.92, 0.78);
+  s.bezierCurveTo(0.48, 0.84, 0.18, 1.16, -0.12, 1.28);
+  s.lineTo(-0.92, 1.3);
+  s.bezierCurveTo(-1.32, 1.26, -1.62, 1.02, -1.78, 0.8);
+  s.lineTo(-2.22, 0.66);
+  s.bezierCurveTo(-2.36, 0.52, -2.32, 0.26, -2.18, 0.2);
+  return s;
+}
+
+function cabinProfile() {
+  const s = new THREE.Shape();
+  s.moveTo(0.62, 0.82);
+  s.lineTo(-0.08, 1.22);
+  s.lineTo(-0.88, 1.24);
+  s.lineTo(-1.42, 0.94);
+  s.lineTo(-1.05, 0.82);
+  s.lineTo(0.35, 0.82);
+  s.closePath();
+  return s;
+}
+
+function meshFromProfile(shape, width, material, bevel = 0.07) {
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: width,
+    bevelEnabled: bevel > 0,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: 2,
+    curveSegments: 10,
+  });
+  geo.translate(0, 0, -width / 2);
+  geo.rotateY(-Math.PI / 2);
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, material);
+}
+
+export function createProceduralCar({ lite = false } = {}) {
   const root = new THREE.Group();
-  root.name = "car";
+  root.name = lite ? "npc" : "car";
 
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0x14c8d4,
-    metalness: 0.38,
-    roughness: 0.42,
-    envMapIntensity: 0.85,
+    metalness: 0.42,
+    roughness: 0.38,
+    envMapIntensity: 0.9,
   });
   const darkMat = new THREE.MeshStandardMaterial({
     color: 0x111118,
@@ -187,10 +191,10 @@ export function createProceduralCar() {
   });
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0x8ecbff,
-    metalness: 0.9,
-    roughness: 0.05,
+    metalness: 0.92,
+    roughness: 0.06,
     transparent: true,
-    opacity: 0.35,
+    opacity: 0.38,
     envMapIntensity: 1.4,
   });
   const rimMat = new THREE.MeshStandardMaterial({
@@ -202,6 +206,7 @@ export function createProceduralCar() {
     color: 0x3df0ff,
     emissive: 0x3df0ff,
     emissiveIntensity: 0.9,
+    side: THREE.DoubleSide,
   });
   const headMat = new THREE.MeshStandardMaterial({
     color: 0xfff4cc,
@@ -214,96 +219,79 @@ export function createProceduralCar() {
     emissiveIntensity: 1.1,
   });
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.52, 4.35), bodyMat);
-  body.position.y = 0.58;
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.28, 0.7), bodyMat);
-  nose.position.set(0, 0.48, 2.35);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.48, 1.85), glassMat);
-  cabin.position.set(0, 1.05, -0.15);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 1.5), bodyMat);
-  roof.position.set(0, 1.32, -0.2);
-  const skirt = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.12, 3.6), darkMat);
-  skirt.position.y = 0.32;
+  const body = meshFromProfile(coupeProfile(), 1.72, bodyMat, 0.09);
+  const cabin = meshFromProfile(cabinProfile(), 1.42, glassMat, 0.04);
+  const skirt = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 3.15, 4, 8), darkMat);
+  skirt.rotation.x = Math.PI / 2;
+  skirt.position.set(0, 0.28, 0);
 
-  const spoilerPostL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.28, 0.08), darkMat);
-  spoilerPostL.position.set(-0.55, 1.05, -1.95);
+  const spoilerPostL = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.28, 8), darkMat);
+  spoilerPostL.position.set(-0.52, 0.98, -1.92);
   const spoilerPostR = spoilerPostL.clone();
-  spoilerPostR.position.x = 0.55;
-  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.07, 0.42), bodyMat);
-  spoiler.position.set(0, 1.22, -1.95);
+  spoilerPostR.position.x = 0.52;
+  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.05, 0.36), bodyMat);
+  spoiler.position.set(0, 1.14, -1.92);
 
-  const headL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.14, 0.08), headMat);
-  headL.position.set(-0.58, 0.55, 2.68);
+  const headL = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), headMat);
+  headL.scale.set(1.35, 0.7, 0.55);
+  headL.position.set(-0.58, 0.54, 2.28);
   const headR = headL.clone();
   headR.position.x = 0.58;
-  const tailL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.06), tailMat);
-  tailL.position.set(-0.6, 0.58, -2.18);
+  const tailL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), tailMat);
+  tailL.scale.set(1.5, 0.55, 0.4);
+  tailL.position.set(-0.58, 0.56, -2.12);
   const tailR = tailL.clone();
-  tailR.position.x = 0.6;
+  tailR.position.x = 0.58;
 
-  const glowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 3.6), glowMat);
+  const glowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 3.3), glowMat);
   glowPlane.rotation.x = -Math.PI / 2;
-  glowPlane.position.y = 0.08;
+  glowPlane.position.y = 0.07;
 
-  root.add(body, nose, cabin, roof, skirt, spoilerPostL, spoilerPostR, spoiler, headL, headR, tailL, tailR, glowPlane);
+  root.add(body, cabin, skirt, spoilerPostL, spoilerPostR, spoiler, headL, headR, tailL, tailR, glowPlane);
 
   const wheels = [];
   const frontWheels = [];
-  const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 16);
+  const wheelGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.26, 18);
   wheelGeo.rotateZ(Math.PI / 2);
   const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
 
   function makeWheel(x, z, front) {
     const pivot = new THREE.Group();
-    pivot.position.set(x, 0.38, z);
+    pivot.position.set(x, 0.36, z);
     const tire = new THREE.Mesh(wheelGeo, tireMat);
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 12), rimMat);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.28, 14), rimMat);
     rim.rotation.z = Math.PI / 2;
-    pivot.add(tire, rim);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8), darkMat);
+    hub.rotation.z = Math.PI / 2;
+    pivot.add(tire, rim, hub);
     root.add(pivot);
     wheels.push(tire);
     if (front) frontWheels.push(tire);
     return pivot;
   }
-  makeWheel(-0.92, 1.35, true);
-  makeWheel(0.92, 1.35, true);
-  makeWheel(-0.92, -1.4, false);
-  makeWheel(0.92, -1.4, false);
+  makeWheel(-0.88, 1.28, true);
+  makeWheel(0.88, 1.28, true);
+  makeWheel(-0.88, -1.32, false);
+  makeWheel(0.88, -1.32, false);
 
-  const glowLight = new THREE.PointLight(0x3df0ff, 4, 9, 2);
+  const glowLight = new THREE.PointLight(0x3df0ff, lite ? 0.9 : 2.2, lite ? 5 : 8, 2);
   glowLight.position.set(0, 0.2, 0);
   root.add(glowLight);
 
-  const spotL = new THREE.SpotLight(0xfff2d0, 6, 42, 0.35, 0.4, 1.4);
-  spotL.position.set(-0.5, 0.6, 2.4);
-  spotL.target.position.set(-0.5, 0.2, 16);
-  const spotR = spotL.clone();
-  spotR.position.x = 0.5;
-  spotR.target.position.set(0.5, 0.2, 16);
-  root.add(spotL, spotL.target, spotR, spotR.target);
+  const headlights = [headL, headR];
+  if (!lite) {
+    const spot = new THREE.SpotLight(0xfff2d0, 4, 36, 0.4, 0.45, 1.4);
+    spot.position.set(0, 0.6, 2.2);
+    spot.target.position.set(0, 0.2, 16);
+    root.add(spot, spot.target);
+    headlights.push(spot);
+  }
 
   root.userData.materials = { body: bodyMat, rim: rimMat, glow: glowMat };
   root.userData.spoiler = spoiler;
   root.userData.wheels = wheels;
   root.userData.frontWheels = frontWheels;
   root.userData.glowLight = glowLight;
-  root.userData.headlights = [spotL, spotR, headL, headR];
+  root.userData.headlights = headlights;
   return root;
-}
-
-function addUnderglow(wrapper) {
-  const glowMat = new THREE.MeshStandardMaterial({
-    color: 0x3df0ff,
-    emissive: 0x3df0ff,
-    emissiveIntensity: 0.9,
-  });
-  const glowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 3.2), glowMat);
-  glowPlane.rotation.x = -Math.PI / 2;
-  glowPlane.position.y = 0.1;
-  const glowLight = new THREE.PointLight(0x3df0ff, 4, 9, 2);
-  glowLight.position.set(0, 0.2, 0);
-  wrapper.add(glowPlane, glowLight);
-  wrapper.userData.materials.glow = glowMat;
-  wrapper.userData.glowLight = glowLight;
-  wrapper.userData.spoiler = wrapper.userData.spoiler || wrapper;
 }

@@ -5,37 +5,37 @@ import { makeSkyTexture, makeWindowTexture } from "./textures.js";
 export function createCity(scene, track) {
   const skyTex = makeSkyTexture();
   scene.background = skyTex;
-  scene.environment = skyTex;
-  scene.fog = new THREE.FogExp2(0x1a1230, 0.00042);
+  scene.fog = new THREE.FogExp2(0x1a1230, 0.00028);
 
   const sky = new THREE.Mesh(
-    new THREE.SphereGeometry(1400, 32, 20),
+    new THREE.SphereGeometry(1400, 16, 10),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false })
   );
   scene.add(sky);
 
   const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(1800, 48),
-    new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 1, metalness: 0 })
+    new THREE.CircleGeometry(1800, 24),
+    new THREE.MeshLambertMaterial({
+      color: 0x16141f,
+      side: THREE.DoubleSide,
+    })
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.4;
+  ground.position.y = -0.2;
   scene.add(ground);
 
-  scene.add(new THREE.HemisphereLight(0x6a7ec8, 0x1a1020, 0.7));
-  const moon = new THREE.DirectionalLight(0xc8d8ff, 0.85);
+  scene.add(new THREE.HemisphereLight(0x6a7ec8, 0x1a1020, 0.85));
+  const moon = new THREE.DirectionalLight(0xc8d8ff, 1.05);
   moon.position.set(-80, 140, 40);
   scene.add(moon);
-  scene.add(new THREE.AmbientLight(0x223044, 0.35));
+  scene.add(new THREE.AmbientLight(0x334466, 0.55));
 
   const windowTex = makeWindowTexture();
-  const buildingMat = new THREE.MeshStandardMaterial({
+  const buildingMat = new THREE.MeshLambertMaterial({
     map: windowTex,
     emissiveMap: windowTex,
     emissive: 0xffc878,
     emissiveIntensity: 0.55,
-    roughness: 0.85,
-    metalness: 0.15,
     color: 0x8899aa,
   });
 
@@ -50,7 +50,7 @@ export function createCity(scene, track) {
 function placeRingBuildings(scene, track, mat, sign) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
   geo.translate(0, 0.5, 0);
-  const count = 90;
+  const count = 40;
   const mesh = new THREE.InstancedMesh(geo, mat, count);
   const dummy = new THREE.Object3D();
   let i = 0;
@@ -86,7 +86,7 @@ function placeDowntown(scene, track, mat) {
 
   const geo = new THREE.BoxGeometry(1, 1, 1);
   geo.translate(0, 0.5, 0);
-  const count = 48;
+  const count = 24;
   const mesh = new THREE.InstancedMesh(geo, mat, count);
   const dummy = new THREE.Object3D();
   for (let i = 0; i < count; i++) {
@@ -102,33 +102,37 @@ function placeDowntown(scene, track, mat) {
 }
 
 function placeLamps(scene, track) {
-  const poleMat = new THREE.MeshStandardMaterial({ color: 0x22222c, roughness: 0.6 });
-  const bulbMat = new THREE.MeshStandardMaterial({
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0x22222c });
+  const bulbMat = new THREE.MeshLambertMaterial({
     color: 0xffe6b0,
     emissive: 0xffd48a,
-    emissiveIntensity: 1.3,
+    emissiveIntensity: 1.2,
   });
-  const poleGeo = new THREE.CylinderGeometry(0.08, 0.12, 6.2, 6);
-  const bulbGeo = new THREE.SphereGeometry(0.22, 8, 8);
-
-  let lights = 0;
-  for (let i = 0; i < track.samples.length; i += 14) {
-    const s = track.samples[i];
-    const side = i % 28 === 0 ? 1 : -1;
-    const pos = s.position.clone().addScaledVector(s.right, side * (ROAD_HALF_WIDTH + 2.8));
-    const pole = new THREE.Mesh(poleGeo, poleMat);
-    pole.position.copy(pos);
-    pole.position.y += 3.1;
-    const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-    bulb.position.copy(pos);
-    bulb.position.y += 6.2;
-    scene.add(pole, bulb);
-
-    if (lights < 8) {
-      const pl = new THREE.PointLight(0xffd8a0, 3.2, 48, 2);
-      pl.position.copy(bulb.position);
+  const poleGeo = new THREE.CylinderGeometry(0.08, 0.12, 6.2, 5);
+  const bulbGeo = new THREE.SphereGeometry(0.22, 6, 6);
+  const poles = new THREE.InstancedMesh(poleGeo, poleMat, 24);
+  const bulbs = new THREE.InstancedMesh(bulbGeo, bulbMat, 24);
+  const dummy = new THREE.Object3D();
+  let i = 0;
+  const step = Math.max(1, Math.floor(track.samples.length / 24));
+  for (let s = 0; s < track.samples.length && i < 24; s += step) {
+    const sample = track.samples[s];
+    const side = i % 2 === 0 ? 1 : -1;
+    dummy.position.copy(sample.position).addScaledVector(sample.right, side * (ROAD_HALF_WIDTH + 2.8));
+    dummy.position.y += 3.1;
+    dummy.updateMatrix();
+    poles.setMatrixAt(i, dummy.matrix);
+    dummy.position.y += 3.1;
+    dummy.updateMatrix();
+    bulbs.setMatrixAt(i, dummy.matrix);
+    if (i < 4) {
+      const pl = new THREE.PointLight(0xffd8a0, 2.4, 40, 2);
+      pl.position.copy(dummy.position);
       scene.add(pl);
-      lights++;
     }
+    i++;
   }
+  poles.count = i;
+  bulbs.count = i;
+  scene.add(poles, bulbs);
 }

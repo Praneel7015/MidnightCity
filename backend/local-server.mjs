@@ -9,7 +9,9 @@ app.use(express.json());
 async function proxy(req, res) {
   const event = {
     httpMethod: req.method,
-    requestContext: { http: { method: req.method } },
+    requestContext: { http: { method: req.method, path: req.path } },
+    rawPath: req.path,
+    path: req.path,
     body: JSON.stringify(req.body || {}),
   };
   const out = await handler(event);
@@ -22,6 +24,9 @@ async function proxy(req, res) {
 app.options("/livery", proxy);
 app.get("/livery", proxy);
 app.post("/livery", proxy);
+app.options("/commentary", proxy);
+app.get("/commentary", proxy);
+app.post("/commentary", proxy);
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 const port = process.env.PORT || 3001;

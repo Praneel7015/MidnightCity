@@ -38,7 +38,7 @@ const required = [
   "frontend/src/game/minimap.js",
   "frontend/src/game/controls.js",
   "frontend/src/game/loop.js",
-  "frontend/src/game/textures.js",
+  "frontend/src/game/traffic.js",
   "CREDITS.md",
   "frontend/index.html",
 ];

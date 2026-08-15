@@ -1,3 +1,5 @@
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
+
 export const PRESETS = [
   {
     name: "Voltage Violet",
@@ -51,21 +53,38 @@ export const PRESETS = [
   },
 ];
 
+async function postJson(path, payload) {
+  const r = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
 export async function requestLivery() {
-  const bases = [import.meta.env.VITE_API_URL, "http://localhost:3001"].filter(Boolean);
-  for (const base of bases) {
-    try {
-      const r = await fetch(`${String(base).replace(/\/$/, "")}/livery`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vibe: "midnight city street race" }),
-      });
-      if (!r.ok) continue;
-      const data = await r.json();
-      if (data && data.bodyHex) return { ...data, source: data.source || "bedrock" };
-    } catch {
-      /* try next / fall through */
-    }
+  try {
+    const data = await postJson("/livery", { vibe: "midnight city street race" });
+    if (data && data.bodyHex) return { ...data, source: data.source || "bedrock" };
+  } catch {
+    /* fall through */
   }
   return PRESETS[Math.floor(Math.random() * PRESETS.length)];
+}
+
+export async function requestCommentary({ kind, kph, lap, livery }) {
+  try {
+    const data = await postJson("/commentary", { kind, kph, lap, livery });
+    if (data?.line) return data;
+  } catch {
+    /* fall through */
+  }
+  const lines = {
+    start: "Engines hot. Midnight City is live.",
+    speed: "That's a heat run. Keep it planted.",
+    lap: "Lap in the books. Do it again, cleaner.",
+    reset: "Reset. The line is still yours.",
+  };
+  return { line: lines[kind] || lines.start, kind, source: "fallback" };
 }

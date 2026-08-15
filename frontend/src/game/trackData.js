@@ -2,7 +2,7 @@
 export const ROAD_HALF_WIDTH = 10;
 export const COLLIDER_RADIUS = 1.05;
 export const RAIL_HEIGHT = 0.7;
-export const TRACK_SEGMENTS = 480;
+export const TRACK_SEGMENTS = 240;
 
 /** t range along the closed spline where a wide tunnel is drawn (visual only). */
 export const TUNNEL_T = [0.63, 0.73];
@@ -16,7 +16,9 @@ function generateWaypoints() {
     const rz = 480 + 70 * Math.cos(2 * a) + 30 * Math.sin(4 * a);
     const x = Math.cos(a) * rx;
     const z = Math.sin(a) * rz;
-    const y = 1.4 + 4.2 * Math.sin(2 * a) + 2.1 * Math.sin(5 * a);
+    // Keep the whole circuit above the city floor so downhill never punches
+    // through the ground plane (that read as a black box behind the camera).
+    const y = 6.4 + 3.5 * Math.sin(2 * a) + 1.45 * Math.sin(5 * a);
     pts.push([x, y, z]);
   }
   return pts;

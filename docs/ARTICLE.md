@@ -11,11 +11,11 @@
 
 Midnight City is a browser arcade racer that tries to bottle one feeling: dropping a loud car onto a glowing night circuit and chasing the vanishing point. It is a toy, not a sim. You paint a coupe in the garage, tap **Drop In**, and drive a long closed loop that runs through a stylized downtown, a neon-kerbed sweep, and a wide tunnel. The camera sits behind the car the way a Need for Speed chase cam does — high, a little late, looking past the hood into the next corner.
 
-The creative output is the race itself: headlights raking wet-looking asphalt, underglow on the tarmac, a heading-up minimap in the corner, lap times on the HUD. A second creative beat lives in the garage. **AI Paint Job** asks Amazon Bedrock (Nova Micro) for a named livery — body color, rims, underglow, a short tagline — and applies it to the 3D car immediately. If Bedrock is asleep, local presets still remix the car, so the toy never hard-depends on an API to be fun.
+The creative output is the race itself: headlights raking wet-looking asphalt, underglow on the tarmac, a heading-up minimap in the corner, lap times on the HUD, and looping royalty-free racing music — Kevin MacLeod’s *Take the Lead* (CC BY 3.0) — that starts when you Drop In. A second creative beat lives in the garage. **AI Paint Job** asks Amazon Bedrock (Nova Micro) for a named livery — body color, rims, underglow, a short tagline — and applies it to the 3D car immediately. If Bedrock is asleep, local presets still remix the car, so the toy never hard-depends on an API to be fun.
 
 It is built for a laptop keyboard and a phone thumb. WASD plus Space to brake, R to reset. On coarse pointers, on-screen GAS / BRAKE / steer pads appear. That was the whole pitch: one creative job, playable in a weekend, hosted on AWS Free Tier.
 
-Screenshots from the local dry-run (garage, chase cam + HUD, skyline) live in `docs/article-images/`.
+Cover art and screenshots (garage, chase cam + HUD, skyline) live in `docs/article-images/` — use `cover.png` as the Builder Center hero.
 
 ---
 
