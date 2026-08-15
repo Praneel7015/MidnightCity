@@ -82,7 +82,10 @@ export async function startGame(canvas) {
 
   applyLivery(car, {
     bodyHex: "#ff2d6a",
+    lowerHex: "#2a0010",
+    stripeHex: null,
     rimHex: "#d8dbe8",
+    rimFinish: "chrome",
     glowHex: "#3df0ff",
     spoiler: true,
     headlights: true,

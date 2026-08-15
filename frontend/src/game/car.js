@@ -84,14 +84,51 @@ export function resetVehicle(v, track) {
 export function applyLivery(car, livery) {
   const mats = car.userData.materials;
   if (!mats) return;
+
   if (livery.bodyHex) {
     mats.body.color.set(livery.bodyHex);
     mats.body.needsUpdate = true;
   }
-  if (livery.rimHex && mats.rim) {
-    mats.rim.color.set(livery.rimHex);
+
+  // Lower-panel two-tone accent
+  if (mats.lower) {
+    const lowerHex = livery.lowerHex || livery.bodyHex || "#111118";
+    mats.lower.color.set(lowerHex);
+    mats.lower.needsUpdate = true;
+  }
+
+  // Racing stripe on hood/roof
+  if (mats.stripe) {
+    const stripeHex = livery.stripeHex || null;
+    if (stripeHex) {
+      mats.stripe.color.set(stripeHex);
+      mats.stripe.visible = true;
+    } else {
+      mats.stripe.visible = false;
+    }
+    mats.stripe.needsUpdate = true;
+  }
+
+  // Rim finish: chrome | matte | color
+  if (mats.rim) {
+    const finish = livery.rimFinish || "chrome";
+    if (finish === "matte") {
+      mats.rim.color.set(livery.rimHex || "#888899");
+      mats.rim.metalness = 0.3;
+      mats.rim.roughness = 0.85;
+    } else if (finish === "color") {
+      mats.rim.color.set(livery.rimHex || "#ffffff");
+      mats.rim.metalness = 0.55;
+      mats.rim.roughness = 0.35;
+    } else {
+      // chrome (default)
+      mats.rim.color.set(livery.rimHex || "#d8dbe8");
+      mats.rim.metalness = 0.85;
+      mats.rim.roughness = 0.22;
+    }
     mats.rim.needsUpdate = true;
   }
+
   if (livery.glowHex && mats.glow) {
     mats.glow.color.set(livery.glowHex);
     mats.glow.emissive.set(livery.glowHex);
@@ -102,6 +139,15 @@ export function applyLivery(car, livery) {
   }
   if (car.userData.spoiler) {
     car.userData.spoiler.visible = livery.spoiler !== false;
+    // Spoiler can match body or stripe color
+    const spoilerMat = car.userData.spoilerMat;
+    if (spoilerMat && livery.stripeHex) {
+      spoilerMat.color.set(livery.stripeHex);
+      spoilerMat.needsUpdate = true;
+    } else if (spoilerMat && livery.bodyHex) {
+      spoilerMat.color.set(livery.bodyHex);
+      spoilerMat.needsUpdate = true;
+    }
   }
   if (car.userData.headlights) {
     for (const h of car.userData.headlights) h.visible = livery.headlights !== false;
@@ -184,6 +230,19 @@ export function createProceduralCar({ lite = false } = {}) {
     roughness: 0.38,
     envMapIntensity: 0.9,
   });
+  // Two-tone lower panel (side sills / lower body)
+  const lowerMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0a14,
+    metalness: 0.38,
+    roughness: 0.55,
+  });
+  // Racing stripe — hidden by default, revealed via livery
+  const stripeMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    metalness: 0.3,
+    roughness: 0.45,
+    visible: false,
+  });
   const darkMat = new THREE.MeshStandardMaterial({
     color: 0x111118,
     metalness: 0.4,
@@ -221,6 +280,28 @@ export function createProceduralCar({ lite = false } = {}) {
 
   const body = meshFromProfile(coupeProfile(), 1.72, bodyMat, 0.09);
   const cabin = meshFromProfile(cabinProfile(), 1.42, glassMat, 0.04);
+
+  // Lower body side-skirt panel (two-tone accent)
+  const lowerPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(3.6, 0.18, 1.6),
+    lowerMat
+  );
+  lowerPanel.position.set(0, 0.27, 0);
+
+  // Roof racing stripe — thin box running front-to-back over the cabin
+  const stripeRoof = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.012, 1.35),
+    stripeMat
+  );
+  stripeRoof.position.set(0, 1.32, -0.22);
+
+  // Hood racing stripe
+  const stripeHood = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.012, 1.15),
+    stripeMat
+  );
+  stripeHood.position.set(0, 0.78, 1.25);
+
   const skirt = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 3.15, 4, 8), darkMat);
   skirt.rotation.x = Math.PI / 2;
   skirt.position.set(0, 0.28, 0);
@@ -229,7 +310,10 @@ export function createProceduralCar({ lite = false } = {}) {
   spoilerPostL.position.set(-0.52, 0.98, -1.92);
   const spoilerPostR = spoilerPostL.clone();
   spoilerPostR.position.x = 0.52;
-  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.05, 0.36), bodyMat);
+
+  // Spoiler uses its own cloned body mat so it can be re-colored independently
+  const spoilerMat = bodyMat.clone();
+  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.05, 0.36), spoilerMat);
   spoiler.position.set(0, 1.14, -1.92);
 
   const headL = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), headMat);
@@ -247,7 +331,11 @@ export function createProceduralCar({ lite = false } = {}) {
   glowPlane.rotation.x = -Math.PI / 2;
   glowPlane.position.y = 0.07;
 
-  root.add(body, cabin, skirt, spoilerPostL, spoilerPostR, spoiler, headL, headR, tailL, tailR, glowPlane);
+  root.add(
+    body, lowerPanel, stripeRoof, stripeHood,
+    cabin, skirt, spoilerPostL, spoilerPostR, spoiler,
+    headL, headR, tailL, tailR, glowPlane
+  );
 
   const wheels = [];
   const frontWheels = [];
@@ -287,8 +375,9 @@ export function createProceduralCar({ lite = false } = {}) {
     headlights.push(spot);
   }
 
-  root.userData.materials = { body: bodyMat, rim: rimMat, glow: glowMat };
+  root.userData.materials = { body: bodyMat, lower: lowerMat, stripe: stripeMat, rim: rimMat, glow: glowMat };
   root.userData.spoiler = spoiler;
+  root.userData.spoilerMat = spoilerMat;
   root.userData.wheels = wheels;
   root.userData.frontWheels = frontWheels;
   root.userData.glowLight = glowLight;

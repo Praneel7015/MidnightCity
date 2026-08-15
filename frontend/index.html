@@ -29,6 +29,41 @@
         <button class="swatch" data-preset="4" style="--c:#0b6b4f" title="Midnight Jade"></button>
       </div>
 
+      <div class="custom-row">
+        <label class="color-field" title="Main body paint">
+          <span>Body</span>
+          <input id="opt-body-color" type="color" value="#14c8d4" />
+        </label>
+        <label class="color-field" title="Lower panel / sill accent">
+          <span>Lower</span>
+          <input id="opt-lower-color" type="color" value="#093845" />
+        </label>
+        <label class="color-field" title="Racing stripe (toggle to enable)">
+          <span>Stripe</span>
+          <input id="opt-stripe-on" type="checkbox" title="Enable stripe" />
+          <input id="opt-stripe-color" type="color" value="#ffffff" />
+        </label>
+        <label class="color-field" title="Underglow neon color">
+          <span>Glow</span>
+          <input id="opt-glow-color" type="color" value="#3df0ff" />
+        </label>
+      </div>
+
+      <div class="custom-row">
+        <label class="color-field" title="Wheel rim color">
+          <span>Rim</span>
+          <input id="opt-rim-color" type="color" value="#f2ffff" />
+        </label>
+        <label class="select-field" title="Rim surface finish">
+          <span>Finish</span>
+          <select id="opt-rim-finish">
+            <option value="chrome">Chrome</option>
+            <option value="matte">Matte</option>
+            <option value="color">Color</option>
+          </select>
+        </label>
+      </div>
+
       <label class="check"><input id="opt-spoiler" type="checkbox" checked /> Spoiler</label>
       <label class="check"><input id="opt-headlights" type="checkbox" checked /> Headlights</label>
 
@@ -36,7 +71,7 @@
       <p id="livery-status" class="status">Nova is optional. The circuit runs without AWS.</p>
       <button id="btn-race" class="go" type="button">Drop In</button>
       <p class="hint">W A S D to drive · Space brake · R reset · music on Drop In</p>
-      <p class="credit">Music: “Take the Lead” by Kevin MacLeod (incompetech.com) · CC BY 3.0</p>
+      <p class="credit">Music: "Take the Lead" by Kevin MacLeod (incompetech.com) · CC BY 3.0</p>
     </section>
 
     <section id="hud">

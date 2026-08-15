@@ -1,0 +1,92 @@
+name: Auto-commit changed files
+
+on:
+  # Trigger on any push to any branch (detects remote changes too)
+  push:
+    branches: ["**"]
+  # Also support manual triggers
+  workflow_dispatch:
+  # Run on a schedule to catch any drift (optional — remove if not needed)
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  sync-changed:
+    name: Commit only changed files
+    runs-on: ubuntu-latest
+    # Never run on commits made by this workflow itself to avoid loops
+    if: github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Detect changed files vs HEAD~1
+        id: changed
+        run: |
+          # List files changed between the previous commit and HEAD.
+          # --diff-filter=ACM  = Added, Copied, Modified (skip deletions/renames for safety)
+          CHANGED=$(git diff --name-only --diff-filter=ACM HEAD~1 HEAD 2>/dev/null || true)
+          echo "Files changed:"
+          echo "$CHANGED"
+          # Write to output for use in later steps
+          echo "list<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGED"  >> "$GITHUB_OUTPUT"
+          echo "EOF"        >> "$GITHUB_OUTPUT"
+          # Count
+          COUNT=$(echo "$CHANGED" | grep -c . || true)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if nothing changed
+        if: steps.changed.outputs.count == '0'
+        run: echo "No changed files detected — skipping commit step."
+
+      - name: Stage only changed files (skip identical content)
+        if: steps.changed.outputs.count != '0'
+        run: |
+          # For each changed file: add it only if it actually differs from the
+          # version already in the index (i.e. has unstaged working-tree changes).
+          # In a plain checkout the working tree always matches HEAD, so we
+          # re-check whether the file differs from the prior commit instead.
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if [ -f "$file" ]; then
+              # Check blob hash in HEAD~1 vs HEAD; if identical, skip
+              OLD=$(git show HEAD~1:"$file" 2>/dev/null | git hash-object --stdin 2>/dev/null || echo "")
+              NEW=$(git show HEAD:"$file"   2>/dev/null | git hash-object --stdin 2>/dev/null || echo "")
+              if [ "$OLD" = "$NEW" ]; then
+                echo "SKIP (identical): $file"
+              else
+                echo "STAGE: $file"
+                git add -- "$file"
+              fi
+            fi
+          done <<< "${{ steps.changed.outputs.list }}"
+
+      - name: Commit staged changes
+        if: steps.changed.outputs.count != '0'
+        run: |
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit after deduplication."
+          else
+            SUMMARY=$(git diff --cached --name-only | head -20 | tr '\n' ' ')
+            git commit -m "chore(auto): sync changed files — ${SUMMARY}"
+            echo "Committed."
+          fi
+
+      - name: Push changes back
+        if: steps.changed.outputs.count != '0'
+        run: |
+          if git log origin/${{ github.ref_name }}..HEAD --oneline 2>/dev/null | grep -q .; then
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "Nothing to push."
+          fi
