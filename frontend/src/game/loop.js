@@ -29,7 +29,7 @@ export async function startGame(canvas) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
-  renderer.setClearColor(0x0a0814, 1);
+  renderer.setClearColor(0x06040e, 1);
 
   const scene = new THREE.Scene();
   const camera = createChaseCamera();

@@ -5,7 +5,7 @@ import { makeSkyTexture, makeWindowTexture } from "./textures.js";
 export function createCity(scene, track) {
   const skyTex = makeSkyTexture();
   scene.background = skyTex;
-  scene.fog = new THREE.FogExp2(0x1a1230, 0.00028);
+  scene.fog = new THREE.FogExp2(0x0d0820, 0.00022);
 
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(1400, 16, 10),

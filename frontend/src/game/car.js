@@ -209,17 +209,6 @@ function coupeProfile() {
   return s;
 }
 
-function fenderBulge(front) {
-  // Wheel-arch bulge shape — small lens that sits over the wheelwell
-  const s = new THREE.Shape();
-  const cx = front ? 1.22 : -1.28;
-  const r = 0.55;
-  s.moveTo(cx - r, 0.32);
-  s.bezierCurveTo(cx - r, 0.78, cx + r, 0.78, cx + r, 0.32);
-  s.lineTo(cx - r, 0.32);
-  return s;
-}
-
 function cabinProfile() {
   // Fastback greenhouse — raked windscreen, long sloping roofline
   const s = new THREE.Shape();
@@ -326,89 +315,80 @@ export function createProceduralCar({ lite = false } = {}) {
   const body = meshFromProfile(coupeProfile(), 1.76, bodyMat, 0.11);
   const cabin = meshFromProfile(cabinProfile(), 1.46, glassMat, 0.05);
 
-  // Wide fender flares over wheel arches
-  const fenderFrontL = meshFromProfile(fenderBulge(true), 0.18, bodyMat, 0.04);
-  fenderFrontL.position.set(-0.95, 0, 0);
-  const fenderFrontR = fenderFrontL.clone();
-  fenderFrontR.position.set(0.95, 0, 0);
-  const fenderRearL = meshFromProfile(fenderBulge(false), 0.18, bodyMat, 0.04);
-  fenderRearL.position.set(-0.95, 0, 0);
-  const fenderRearR = fenderRearL.clone();
-  fenderRearR.position.set(0.95, 0, 0);
-
-  // Front bumper / chin spoiler
+  // Front bumper / chin spoiler — Z is car-length, X is car-width
   const bumperMat = darkMat;
   const bumperCenter = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 0.18), bumperMat);
   bumperCenter.position.set(0, 0.22, 2.42);
-  const bumperL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.22), bumperMat);
-  bumperL.position.set(-0.62, 0.2, 2.4);
+  const bumperL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), bumperMat);
+  bumperL.position.set(-0.56, 0.2, 2.4);
   const bumperR = bumperL.clone();
-  bumperR.position.x = 0.62;
+  bumperR.position.x = 0.56;
 
-  // Front intake mesh (dark slot)
+  // Front intake slots
   const intakeMat = new THREE.MeshStandardMaterial({ color: 0x060608, roughness: 0.9 });
-  const intakeL = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.1, 0.08), intakeMat);
-  intakeL.position.set(-0.38, 0.28, 2.46);
+  const intakeL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.08), intakeMat);
+  intakeL.position.set(-0.32, 0.28, 2.47);
   const intakeR = intakeL.clone();
-  intakeR.position.x = 0.38;
+  intakeR.position.x = 0.32;
 
-  // Rear diffuser
-  const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.32), bumperMat);
+  // Rear diffuser  (X=width, Y=height, Z=depth)
+  const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.1, 0.28), bumperMat);
   diffuser.position.set(0, 0.2, -2.32);
   diffuser.rotation.x = 0.25;
 
-  // Dual exhausts
+  // Dual exhausts — rotated so the open end faces rearward (Z axis)
   const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.9, roughness: 0.3 });
   const exhaustGeo = new THREE.CylinderGeometry(0.055, 0.065, 0.22, 10);
-  exhaustGeo.rotateZ(Math.PI / 2);
+  exhaustGeo.rotateX(Math.PI / 2); // open end faces -Z (rear)
   const exhaustL = new THREE.Mesh(exhaustGeo, exhaustMat);
-  exhaustL.position.set(-0.36, 0.28, -2.3);
+  exhaustL.position.set(-0.34, 0.27, -2.32);
   const exhaustR = exhaustL.clone();
-  exhaustR.position.x = 0.36;
+  exhaustR.position.x = 0.34;
 
-  // Lower body side-skirt panel (two-tone accent)
+  // Side-skirt lower panel — X=car width (~1.72), Z=car length (~3.6)
   const lowerPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(3.72, 0.16, 1.58),
+    new THREE.BoxGeometry(1.72, 0.16, 3.6),
     lowerMat
   );
   lowerPanel.position.set(0, 0.22, 0);
 
-  // Roof racing stripe — thin box running front-to-back over the cabin
+  // Roof racing stripe — X=stripe width, Z=stripe length along car
   const stripeRoof = new THREE.Mesh(
-    new THREE.BoxGeometry(0.26, 0.014, 1.4),
+    new THREE.BoxGeometry(0.24, 0.014, 1.38),
     stripeMat
   );
   stripeRoof.position.set(0, 1.32, -0.28);
 
   // Hood racing stripe
   const stripeHood = new THREE.Mesh(
-    new THREE.BoxGeometry(0.26, 0.014, 1.2),
+    new THREE.BoxGeometry(0.24, 0.014, 1.15),
     stripeMat
   );
   stripeHood.position.set(0, 0.74, 1.18);
 
+  // Side skirt tube running along the sill (CapsuleGeometry axis is Y by default, rotate to Z)
   const skirt = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.13, 3.25, 4, 8), darkMat
+    new THREE.CapsuleGeometry(0.1, 3.1, 4, 8), darkMat
   );
   skirt.rotation.x = Math.PI / 2;
-  skirt.position.set(0, 0.22, 0);
+  skirt.position.set(0, 0.19, 0);
 
-  const spoilerPostL = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.3, 8), darkMat);
-  spoilerPostL.position.set(-0.5, 1.02, -2.0);
+  const spoilerPostL = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.28, 8), darkMat);
+  spoilerPostL.position.set(-0.48, 1.04, -2.0);
   const spoilerPostR = spoilerPostL.clone();
-  spoilerPostR.position.x = 0.5;
+  spoilerPostR.position.x = 0.48;
 
-  // Spoiler uses its own cloned body mat so it can be re-colored independently
+  // Spoiler blade — X=width matching car body, Z=blade chord
   const spoilerMat = bodyMat.clone();
-  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.38), spoilerMat);
+  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.055, 0.34), spoilerMat);
   spoiler.position.set(0, 1.18, -2.0);
 
-  // Spoiler end-plates
-  const plateGeo = new THREE.BoxGeometry(0.06, 0.18, 0.36);
+  // Spoiler end-plates — width X is thin, height Y, depth Z matches blade
+  const plateGeo = new THREE.BoxGeometry(0.055, 0.17, 0.34);
   const plateL = new THREE.Mesh(plateGeo, spoilerMat);
-  plateL.position.set(-0.78, 1.18, -2.0);
+  plateL.position.set(-0.73, 1.18, -2.0);
   const plateR = plateL.clone();
-  plateR.position.x = 0.78;
+  plateR.position.x = 0.73;
 
   const headL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8), headMat);
   headL.scale.set(1.4, 0.65, 0.5);
@@ -466,7 +446,6 @@ export function createProceduralCar({ lite = false } = {}) {
 
   root.add(
     body,
-    fenderFrontL, fenderFrontR, fenderRearL, fenderRearR,
     bumperCenter, bumperL, bumperR,
     intakeL, intakeR,
     diffuser, exhaustL, exhaustR,
