@@ -298,7 +298,7 @@ export function createProceduralCar({ lite = false } = {}) {
     emissiveIntensity: 3.2,
   });
 
-  // Lens glow sprites — additive planes that sit flush with the light surface
+  // Lens glow material factory — used inline per light cluster
   function makeLensMat(hex) {
     return new THREE.MeshBasicMaterial({
       color: hex,
@@ -309,8 +309,7 @@ export function createProceduralCar({ lite = false } = {}) {
       side: THREE.DoubleSide,
     });
   }
-  const headGlowMat = makeLensMat(0xfff4cc);
-  const tailGlowMat = makeLensMat(0xff1111);
+  void makeLensMat; // defined for reference; actual mats inlined below
 
   const body = meshFromProfile(coupeProfile(), 1.76, bodyMat, 0.11);
   const cabin = meshFromProfile(cabinProfile(), 1.46, glassMat, 0.05);
@@ -390,45 +389,117 @@ export function createProceduralCar({ lite = false } = {}) {
   const plateR = plateL.clone();
   plateR.position.x = 0.73;
 
-  const headL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8), headMat);
-  headL.scale.set(1.4, 0.65, 0.5);
-  headL.position.set(-0.55, 0.5, 2.4);
+  // ── HEADLIGHTS ────────────────────────────────────────────────────────────
+  // Push well in front of the body face (~z=2.52) so they're not buried inside
+
+  // Outer headlight housing recess (dark surround)
+  const housingMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 0.7 });
+  const housingL = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.18, 0.12), housingMat);
+  housingL.position.set(-0.52, 0.5, 2.52);
+  const housingR = housingL.clone();
+  housingR.position.x = 0.52;
+  const housingInnerL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.1), housingMat);
+  housingInnerL.position.set(-0.25, 0.54, 2.52);
+  const housingInnerR = housingInnerL.clone();
+  housingInnerR.position.x = 0.25;
+
+  // Bright emissive lens bulbs protruding from housing
+  const headL = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), headMat);
+  headL.scale.set(1.1, 0.55, 0.4);
+  headL.position.set(-0.52, 0.5, 2.59);
   const headR = headL.clone();
-  headR.position.x = 0.55;
-  // Inner headlight cluster
-  const headInnerL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), headMat);
-  headInnerL.scale.set(1.1, 0.7, 0.5);
-  headInnerL.position.set(-0.3, 0.54, 2.44);
+  headR.position.x = 0.52;
+
+  const headInnerL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), headMat);
+  headInnerL.scale.set(1.0, 0.65, 0.4);
+  headInnerL.position.set(-0.25, 0.54, 2.59);
   const headInnerR = headInnerL.clone();
-  headInnerR.position.x = 0.3;
+  headInnerR.position.x = 0.25;
 
-  // Head lens glow planes (additive, sit just forward of the light mesh)
-  const lensGeo = new THREE.PlaneGeometry(0.35, 0.22);
-  const headGlowL = new THREE.Mesh(lensGeo, headGlowMat);
-  headGlowL.position.set(-0.55, 0.5, 2.48);
-  const headGlowR = new THREE.Mesh(lensGeo, headGlowMat);
-  headGlowR.position.set(0.55, 0.5, 2.48);
-  const headGlowInnerL = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.15), headGlowMat);
-  headGlowInnerL.position.set(-0.3, 0.54, 2.5);
+  // DRL strip — thin emissive bar running under the outer lens
+  const drlMat = new THREE.MeshBasicMaterial({
+    color: 0xfff8e0,
+    transparent: true,
+    opacity: 0.95,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const drlL = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.03, 0.04), drlMat);
+  drlL.position.set(-0.52, 0.38, 2.58);
+  const drlR = drlL.clone();
+  drlR.position.x = 0.52;
+
+  // Additive lens glow planes — face FORWARD (+Z) to be visible from front,
+  // and also face BACKWARD so they bloom in the chase cam view
+  const lensGeo = new THREE.PlaneGeometry(0.42, 0.25);
+  const headGlowMat2 = new THREE.MeshBasicMaterial({
+    color: 0xfff8d0,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide, // visible from both front AND behind
+  });
+  const headGlowL = new THREE.Mesh(lensGeo, headGlowMat2);
+  headGlowL.position.set(-0.52, 0.5, 2.62);
+  const headGlowR = new THREE.Mesh(lensGeo, headGlowMat2);
+  headGlowR.position.set(0.52, 0.5, 2.62);
+  const headGlowInnerMat = new THREE.MeshBasicMaterial({
+    color: 0xfff8d0,
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+  const headGlowInnerL = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.18), headGlowInnerMat);
+  headGlowInnerL.position.set(-0.25, 0.54, 2.62);
   const headGlowInnerR = headGlowInnerL.clone();
-  headGlowInnerR.position.x = 0.3;
+  headGlowInnerR.position.x = 0.25;
 
-  const tailL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 6), tailMat);
-  tailL.scale.set(1.6, 0.5, 0.38);
-  tailL.position.set(-0.55, 0.54, -2.2);
+  // ── TAILLIGHTS ────────────────────────────────────────────────────────────
+  // Dark housing recess at rear
+  const tailHousingL = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.1), housingMat);
+  tailHousingL.position.set(-0.52, 0.54, -2.28);
+  const tailHousingR = tailHousingL.clone();
+  tailHousingR.position.x = 0.52;
+
+  const tailL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 6), tailMat);
+  tailL.scale.set(1.7, 0.5, 0.38);
+  tailL.position.set(-0.52, 0.54, -2.34);
   const tailR = tailL.clone();
-  tailR.position.x = 0.55;
+  tailR.position.x = 0.52;
 
-  // Tail lens glow planes
-  const tailLensGeo = new THREE.PlaneGeometry(0.36, 0.18);
-  const tailGlowL = new THREE.Mesh(tailLensGeo, tailGlowMat);
+  // Tail lens glow — DoubleSide so chase cam sees them
+  const tailGlowMat2 = new THREE.MeshBasicMaterial({
+    color: 0xff1111,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+  const tailLensGeo = new THREE.PlaneGeometry(0.44, 0.2);
+  const tailGlowL = new THREE.Mesh(tailLensGeo, tailGlowMat2);
   tailGlowL.rotation.y = Math.PI;
-  tailGlowL.position.set(-0.55, 0.54, -2.26);
-  const tailGlowR = new THREE.Mesh(tailLensGeo, tailGlowMat);
+  tailGlowL.position.set(-0.52, 0.54, -2.36);
+  const tailGlowR = new THREE.Mesh(tailLensGeo, tailGlowMat2);
   tailGlowR.rotation.y = Math.PI;
-  tailGlowR.position.set(0.55, 0.54, -2.26);
+  tailGlowR.position.set(0.52, 0.54, -2.36);
 
-  // Brake light strip across the full rear — always glows dim, brighter on brake
+  // Full-width LED strip at rear
+  const rearStripMat = new THREE.MeshBasicMaterial({
+    color: 0xff1111,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const rearLedStrip = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.035), rearStripMat);
+  rearLedStrip.rotation.y = Math.PI;
+  rearLedStrip.position.set(0, 0.38, -2.35);
+
+  // Brake light strip — same rear-facing plane, brightens on brake
   const brakeMat = new THREE.MeshBasicMaterial({
     color: 0xff0000,
     transparent: true,
@@ -438,7 +509,7 @@ export function createProceduralCar({ lite = false } = {}) {
   });
   const brakeStrip = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.06), brakeMat);
   brakeStrip.rotation.y = Math.PI;
-  brakeStrip.position.set(0, 0.7, -2.2);
+  brakeStrip.position.set(0, 0.56, -2.36);
 
   const glowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3.5), glowMat);
   glowPlane.rotation.x = -Math.PI / 2;
@@ -452,9 +523,13 @@ export function createProceduralCar({ lite = false } = {}) {
     lowerPanel, stripeRoof, stripeHood,
     cabin, skirt,
     spoilerPostL, spoilerPostR, spoiler, plateL, plateR,
+    housingL, housingR, housingInnerL, housingInnerR,
     headL, headR, headInnerL, headInnerR,
+    drlL, drlR,
     headGlowL, headGlowR, headGlowInnerL, headGlowInnerR,
-    tailL, tailR, tailGlowL, tailGlowR, brakeStrip,
+    tailHousingL, tailHousingR,
+    tailL, tailR, tailGlowL, tailGlowR,
+    rearLedStrip, brakeStrip,
     glowPlane
   );
 
@@ -487,23 +562,27 @@ export function createProceduralCar({ lite = false } = {}) {
   glowLight.position.set(0, 0.2, 0);
   root.add(glowLight);
 
-  // Front white point light — casts on the road ahead
-  const frontLight = new THREE.PointLight(0xfff8d0, lite ? 1.2 : 3.5, lite ? 12 : 22, 1.8);
-  frontLight.position.set(0, 0.55, 2.6);
+  // Front white point light — strong enough to paint the road white ahead
+  const frontLight = new THREE.PointLight(0xfff8d0, lite ? 1.8 : 5.5, lite ? 14 : 28, 1.6);
+  frontLight.position.set(0, 0.55, 2.8);
   root.add(frontLight);
 
-  // Rear red point light — paints the road behind with brake glow
-  const rearLight = new THREE.PointLight(0xff1100, lite ? 0.6 : 1.8, lite ? 7 : 12, 2);
-  rearLight.position.set(0, 0.55, -2.4);
+  // Rear red point light
+  const rearLight = new THREE.PointLight(0xff1100, lite ? 0.8 : 2.5, lite ? 8 : 14, 2);
+  rearLight.position.set(0, 0.55, -2.6);
   root.add(rearLight);
 
-  const headlights = [headL, headR, headInnerL, headInnerR,
-                      headGlowL, headGlowR, headGlowInnerL, headGlowInnerR,
-                      frontLight];
+  const headlights = [
+    headL, headR, headInnerL, headInnerR,
+    drlL, drlR,
+    headGlowL, headGlowR, headGlowInnerL, headGlowInnerR,
+    frontLight,
+  ];
   if (!lite) {
-    const spot = new THREE.SpotLight(0xfff2d0, 4, 36, 0.4, 0.45, 1.4);
-    spot.position.set(0, 0.6, 2.2);
-    spot.target.position.set(0, 0.2, 16);
+    // Narrow spotlight beam down the road
+    const spot = new THREE.SpotLight(0xfff2d0, 6, 48, 0.38, 0.5, 1.4);
+    spot.position.set(0, 0.65, 2.4);
+    spot.target.position.set(0, 0.1, 20);
     root.add(spot, spot.target);
     headlights.push(spot);
   }
