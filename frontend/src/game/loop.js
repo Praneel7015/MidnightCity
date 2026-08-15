@@ -126,11 +126,11 @@ export async function startGame(canvas) {
         lastSpeedCall = garageTime;
         announce("speed", { livery: liveryName, kph, lap: vehicle.lap });
       }
-      syncCarMesh(car, vehicle, dt);
+      syncCarMesh(car, vehicle, dt, input);
       updateChaseCamera(camera, vehicle, dt, track);
       hud.update(vehicle);
     } else {
-      syncCarMesh(car, vehicle, dt);
+      syncCarMesh(car, vehicle, dt, null);
       updateGarageCamera(camera, car, garageTime);
     }
 

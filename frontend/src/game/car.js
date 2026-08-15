@@ -162,7 +162,7 @@ export function applyLivery(car, livery) {
   }
 }
 
-export function syncCarMesh(car, v, dt) {
+export function syncCarMesh(car, v, dt, input) {
   car.position.copy(v.position);
   car.rotation.order = "YXZ";
   car.rotation.y = v.heading;
@@ -178,6 +178,13 @@ export function syncCarMesh(car, v, dt) {
   for (const w of fronts) {
     w.parent.rotation.y = v.steer * 0.45;
   }
+
+  // Brake light brightens when braking
+  const braking = input?.brake || (v.speed > 1 && v.accel < 0);
+  const rearLight = car.userData.rearLight;
+  if (rearLight) rearLight.intensity = THREE.MathUtils.damp(rearLight.intensity, braking ? 4.5 : 1.8, 10, dt);
+  const brakeStrip = car.userData.brakeStrip;
+  if (brakeStrip) brakeStrip.material.opacity = THREE.MathUtils.damp(brakeStrip.material.opacity, braking ? 0.85 : 0.4, 10, dt);
 }
 
 export async function loadCar(scene, opts) {
@@ -292,15 +299,29 @@ export function createProceduralCar({ lite = false } = {}) {
     side: THREE.DoubleSide,
   });
   const headMat = new THREE.MeshStandardMaterial({
-    color: 0xfff4cc,
-    emissive: 0xfff1b0,
-    emissiveIntensity: 1.4,
+    color: 0xffffff,
+    emissive: 0xfff8e0,
+    emissiveIntensity: 3.5,
   });
   const tailMat = new THREE.MeshStandardMaterial({
-    color: 0xff2244,
-    emissive: 0xff0022,
-    emissiveIntensity: 1.1,
+    color: 0xff1a1a,
+    emissive: 0xff0000,
+    emissiveIntensity: 3.2,
   });
+
+  // Lens glow sprites — additive planes that sit flush with the light surface
+  function makeLensMat(hex) {
+    return new THREE.MeshBasicMaterial({
+      color: hex,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
+  }
+  const headGlowMat = makeLensMat(0xfff4cc);
+  const tailGlowMat = makeLensMat(0xff1111);
 
   const body = meshFromProfile(coupeProfile(), 1.76, bodyMat, 0.11);
   const cabin = meshFromProfile(cabinProfile(), 1.46, glassMat, 0.05);
@@ -401,11 +422,43 @@ export function createProceduralCar({ lite = false } = {}) {
   const headInnerR = headInnerL.clone();
   headInnerR.position.x = 0.3;
 
+  // Head lens glow planes (additive, sit just forward of the light mesh)
+  const lensGeo = new THREE.PlaneGeometry(0.35, 0.22);
+  const headGlowL = new THREE.Mesh(lensGeo, headGlowMat);
+  headGlowL.position.set(-0.55, 0.5, 2.48);
+  const headGlowR = new THREE.Mesh(lensGeo, headGlowMat);
+  headGlowR.position.set(0.55, 0.5, 2.48);
+  const headGlowInnerL = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.15), headGlowMat);
+  headGlowInnerL.position.set(-0.3, 0.54, 2.5);
+  const headGlowInnerR = headGlowInnerL.clone();
+  headGlowInnerR.position.x = 0.3;
+
   const tailL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 6), tailMat);
   tailL.scale.set(1.6, 0.5, 0.38);
   tailL.position.set(-0.55, 0.54, -2.2);
   const tailR = tailL.clone();
   tailR.position.x = 0.55;
+
+  // Tail lens glow planes
+  const tailLensGeo = new THREE.PlaneGeometry(0.36, 0.18);
+  const tailGlowL = new THREE.Mesh(tailLensGeo, tailGlowMat);
+  tailGlowL.rotation.y = Math.PI;
+  tailGlowL.position.set(-0.55, 0.54, -2.26);
+  const tailGlowR = new THREE.Mesh(tailLensGeo, tailGlowMat);
+  tailGlowR.rotation.y = Math.PI;
+  tailGlowR.position.set(0.55, 0.54, -2.26);
+
+  // Brake light strip across the full rear — always glows dim, brighter on brake
+  const brakeMat = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.4,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const brakeStrip = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.06), brakeMat);
+  brakeStrip.rotation.y = Math.PI;
+  brakeStrip.position.set(0, 0.7, -2.2);
 
   const glowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3.5), glowMat);
   glowPlane.rotation.x = -Math.PI / 2;
@@ -421,7 +474,9 @@ export function createProceduralCar({ lite = false } = {}) {
     cabin, skirt,
     spoilerPostL, spoilerPostR, spoiler, plateL, plateR,
     headL, headR, headInnerL, headInnerR,
-    tailL, tailR, glowPlane
+    headGlowL, headGlowR, headGlowInnerL, headGlowInnerR,
+    tailL, tailR, tailGlowL, tailGlowR, brakeStrip,
+    glowPlane
   );
 
   const wheels = [];
@@ -453,7 +508,19 @@ export function createProceduralCar({ lite = false } = {}) {
   glowLight.position.set(0, 0.2, 0);
   root.add(glowLight);
 
-  const headlights = [headL, headR, headInnerL, headInnerR];
+  // Front white point light — casts on the road ahead
+  const frontLight = new THREE.PointLight(0xfff8d0, lite ? 1.2 : 3.5, lite ? 12 : 22, 1.8);
+  frontLight.position.set(0, 0.55, 2.6);
+  root.add(frontLight);
+
+  // Rear red point light — paints the road behind with brake glow
+  const rearLight = new THREE.PointLight(0xff1100, lite ? 0.6 : 1.8, lite ? 7 : 12, 2);
+  rearLight.position.set(0, 0.55, -2.4);
+  root.add(rearLight);
+
+  const headlights = [headL, headR, headInnerL, headInnerR,
+                      headGlowL, headGlowR, headGlowInnerL, headGlowInnerR,
+                      frontLight];
   if (!lite) {
     const spot = new THREE.SpotLight(0xfff2d0, 4, 36, 0.4, 0.45, 1.4);
     spot.position.set(0, 0.6, 2.2);
@@ -468,6 +535,8 @@ export function createProceduralCar({ lite = false } = {}) {
   root.userData.wheels = wheels;
   root.userData.frontWheels = frontWheels;
   root.userData.glowLight = glowLight;
+  root.userData.rearLight = rearLight;
+  root.userData.brakeStrip = brakeStrip;
   root.userData.headlights = headlights;
   root.userData.plateL = plateL;
   root.userData.plateR = plateR;
