@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import { checkpointCount } from "./trackData.js";
 
-export const MAX_SPEED = 58;
+export const MAX_SPEED = 68;
 export const REVERSE_MAX = 14;
 // Drag coefficient — multiplied by speed² to create resistance.
-// This makes 0-200 feel quick but 200-360 takes sustained throttle.
+// Terminal velocity ≈ sqrt(ACCEL / DRAG). At 22/0.0055 ≈ 63 units → ~360 km/h.
 const ACCEL = 22;
-const DRAG = 0.0088;
+const DRAG = 0.0055;
 const BRAKE = 55;
 const REVERSE_ACCEL = 18;
 const COAST = 4;

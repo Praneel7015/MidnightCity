@@ -23,7 +23,7 @@ export function bindHud() {
 
   return {
     update(v, racePos) {
-      const kph = Math.abs(v.speed) * 6.2;
+      const kph = Math.abs(v.speed) * 5.7;
       if (speed) speed.textContent = String(Math.round(kph)).padStart(3, "0");
       if (lap)   lap.textContent   = String(v.lap);
       if (time)  time.textContent  = fmt(v.lapTime);
