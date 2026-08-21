@@ -97,9 +97,8 @@ export function createTraffic(scene, track, count = 10) {
 
 export function restyleTraffic(traffic, playerLivery = {}) {
   const hex = String(playerLivery.bodyHex || "").toLowerCase();
-  const name = playerLivery.name;
-  const pool = NPC_PAINT.filter((p) => p.name !== name && p.bodyHex.toLowerCase() !== hex);
-  const paints = pool.length ? pool : NPC_PAINT;
+  const pool = NPC_PAINT.filter((p) => p.bodyHex.toLowerCase() !== hex);
+  const paints = pool.length >= 3 ? pool : NPC_PAINT;
   traffic.racers.forEach((r, i) => {
     r.paint = paints[i % paints.length];
     applyLivery(r.car, r.paint);

@@ -1,8 +1,11 @@
 import { BedrockRuntimeClient, ConverseCommand, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 
 const REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "ap-south-1";
 const bedrock = new BedrockRuntimeClient({ region: REGION });
+const dynamo  = new DynamoDBClient({ region: REGION });
 const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || "apac.amazon.nova-micro-v1:0";
+const TABLE_NAME       = process.env.AGENT_TABLE      || "midnight-city-agent";
 
 const LIVERY_FALLBACK = [
   {
@@ -149,9 +152,31 @@ export async function handler(event = {}) {
   const method = event.requestContext?.http?.method || event.httpMethod || "POST";
   const path = pathOf(event);
   if (method === "OPTIONS") return { statusCode: 204, headers: cors, body: "" };
-  if (method === "GET") return json(200, { ok: true, service: "midnight-city", region: REGION, model: BEDROCK_MODEL_ID });
+  if (method === "GET" && !path.includes("today")) {
+    return json(200, { ok: true, service: "midnight-city", region: REGION, model: BEDROCK_MODEL_ID });
+  }
 
   const body = parseBody(event);
+
+  if (path.includes("today")) {
+    try {
+      const result = await dynamo.send(new GetItemCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: { S: "today" } },
+      }));
+      if (result.Item) {
+        return json(200, {
+          livery:      JSON.parse(result.Item.livery.S),
+          mood:        JSON.parse(result.Item.mood.S),
+          dateLabel:   result.Item.dateLabel.S,
+          generatedAt: result.Item.generatedAt.S,
+        });
+      }
+    } catch (err) {
+      console.warn("today lookup failed", err?.message);
+    }
+    return json(200, { livery: null, mood: null });
+  }
 
   if (path.includes("commentary")) {
     try {

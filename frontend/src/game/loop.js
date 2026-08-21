@@ -45,7 +45,6 @@ export async function startGame(canvas) {
   syncCarMesh(car, vehicle, 0.016);
 
   const traffic = createTraffic(scene, track, mobile ? 6 : 10);
-  restyleTraffic(traffic, { name: "Harbor Cyan", bodyHex: "#14c8d4" });
 
   const minimap = createMinimap(track, vehicle);
   scene.add(minimap.chevron);
@@ -57,11 +56,13 @@ export async function startGame(canvas) {
   let liveryName = "Harbor Cyan";
   let lastLap = 0;
   let lastSpeedCall = 0;
+  let playerLivery = { name: "", bodyHex: "#ff2d6a" };
 
   bindGarage({
     onLivery: (livery) => {
       applyLivery(car, livery);
       liveryName = livery.name || liveryName;
+      playerLivery = livery;
       restyleTraffic(traffic, livery);
     },
     onRace: () => {
@@ -77,6 +78,13 @@ export async function startGame(canvas) {
     onGarage: () => {
       mode = "garage";
       document.body.dataset.mode = "garage";
+    },
+    onTodayMood: (mood) => {
+      const condEl = document.getElementById("track-condition");
+      if (condEl && mood?.condition) {
+        condEl.textContent = `Track: ${mood.condition}`;
+        condEl.hidden = false;
+      }
     },
   });
 

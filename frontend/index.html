@@ -34,40 +34,18 @@
           <span>Body</span>
           <input id="opt-body-color" type="color" value="#14c8d4" />
         </label>
-        <label class="color-field" title="Lower panel / sill accent">
-          <span>Lower</span>
-          <input id="opt-lower-color" type="color" value="#093845" />
-        </label>
-        <label class="color-field" title="Racing stripe (toggle to enable)">
-          <span>Stripe</span>
-          <input id="opt-stripe-on" type="checkbox" title="Enable stripe" />
-          <input id="opt-stripe-color" type="color" value="#ffffff" />
-        </label>
         <label class="color-field" title="Underglow neon color">
           <span>Glow</span>
           <input id="opt-glow-color" type="color" value="#3df0ff" />
         </label>
-      </div>
-
-      <div class="custom-row">
         <label class="color-field" title="Wheel rim color">
           <span>Rim</span>
           <input id="opt-rim-color" type="color" value="#f2ffff" />
         </label>
-        <label class="select-field" title="Rim surface finish">
-          <span>Finish</span>
-          <select id="opt-rim-finish">
-            <option value="chrome">Chrome</option>
-            <option value="matte">Matte</option>
-            <option value="color">Color</option>
-          </select>
-        </label>
       </div>
 
-      <label class="check"><input id="opt-spoiler" type="checkbox" checked /> Spoiler</label>
-      <label class="check"><input id="opt-headlights" type="checkbox" checked /> Headlights</label>
-
       <button id="btn-ai" class="ghost" type="button">AI Paint Job</button>
+      <button id="btn-tonight" class="ghost tonight" type="button" hidden>Tonight's Build</button>
       <p id="livery-status" class="status">Nova is optional. The circuit runs without AWS.</p>
       <button id="btn-race" class="go" type="button">Drop In</button>
       <p class="hint">W A S D to drive · Space brake · R reset · music on Drop In</p>
@@ -89,17 +67,17 @@
       <button id="btn-reset" type="button">Reset</button>
       <button id="btn-mute" type="button">Sound on</button>
       <p id="callout" class="callout" hidden></p>
+      <p id="track-condition" class="track-condition" hidden></p>
     </section>
 
     <div id="touch" class="touch">
-      <div class="steer">
-        <button id="btn-left" type="button">◀</button>
-        <button id="btn-right" type="button">▶</button>
+      <div id="steer-zone" class="steer-zone">
+        <div id="steer-knob" class="steer-knob"></div>
+        <span class="steer-hint">STEER</span>
       </div>
       <div class="pedals">
-        <button id="btn-brake" type="button">BRAKE</button>
-        <button id="btn-reverse" type="button">S</button>
         <button id="btn-gas" type="button">GAS</button>
+        <button id="btn-brake" type="button">BRAKE</button>
       </div>
     </div>
 

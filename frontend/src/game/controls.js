@@ -33,14 +33,8 @@ export function createControls() {
 
   function bindTouch(el, prop) {
     if (!el) return;
-    const on = (ev) => {
-      ev.preventDefault();
-      input[prop] = true;
-    };
-    const off = (ev) => {
-      ev.preventDefault();
-      input[prop] = false;
-    };
+    const on = (ev) => { ev.preventDefault(); input[prop] = true; };
+    const off = (ev) => { ev.preventDefault(); input[prop] = false; };
     el.addEventListener("pointerdown", on);
     el.addEventListener("pointerup", off);
     el.addEventListener("pointerleave", off);
@@ -49,9 +43,51 @@ export function createControls() {
 
   bindTouch(document.getElementById("btn-gas"), "throttle");
   bindTouch(document.getElementById("btn-brake"), "brake");
-  bindTouch(document.getElementById("btn-left"), "left");
-  bindTouch(document.getElementById("btn-right"), "right");
-  bindTouch(document.getElementById("btn-reverse"), "reverse");
+
+  // ── Joystick steer zone ────────────────────────────────────────────────────
+  // Left half of screen: drag horizontally to steer. Threshold is small so any
+  // intentional swipe registers immediately.
+  const steerZone = document.getElementById("steer-zone");
+  const steerKnob = document.getElementById("steer-knob");
+  const STEER_THRESHOLD = 14; // px before left/right engages
+  const STEER_FULL = 52;      // px for full lock
+  let steerPointerId = null;
+  let steerOriginX = 0;
+  let steerOffsetX = 0;
+
+  function updateSteer(dx) {
+    steerOffsetX = Math.max(-STEER_FULL, Math.min(STEER_FULL, dx));
+    if (steerKnob) {
+      steerKnob.style.transform = `translateX(${steerOffsetX}px)`;
+    }
+    input.left  = dx < -STEER_THRESHOLD;
+    input.right = dx > STEER_THRESHOLD;
+  }
+
+  if (steerZone) {
+    steerZone.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      steerPointerId = e.pointerId;
+      steerOriginX = e.clientX;
+      steerZone.setPointerCapture(e.pointerId);
+      updateSteer(0);
+    });
+    steerZone.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== steerPointerId) return;
+      e.preventDefault();
+      updateSteer(e.clientX - steerOriginX);
+    });
+    const endSteer = (e) => {
+      if (e.pointerId !== steerPointerId) return;
+      steerPointerId = null;
+      updateSteer(0);
+      input.left = false;
+      input.right = false;
+    };
+    steerZone.addEventListener("pointerup", endSteer);
+    steerZone.addEventListener("pointercancel", endSteer);
+    steerZone.addEventListener("pointerleave", endSteer);
+  }
 
   const resetBtn = document.getElementById("btn-reset");
   if (resetBtn) {

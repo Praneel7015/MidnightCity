@@ -88,6 +88,18 @@ export async function requestLivery() {
   return PRESETS[Math.floor(Math.random() * PRESETS.length)];
 }
 
+export async function requestToday() {
+  try {
+    const r = await fetch(`${API_URL}/today`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (data?.livery?.bodyHex) return data;
+  } catch {
+    /* fall through */
+  }
+  return null;
+}
+
 export async function requestCommentary({ kind, kph, lap, livery }) {
   try {
     const data = await postJson("/commentary", { kind, kph, lap, livery });
