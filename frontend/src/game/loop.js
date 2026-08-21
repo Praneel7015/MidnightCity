@@ -16,7 +16,7 @@ import { createControls, consumeReset, isMobileUi } from "./controls.js";
 import { bindGarage } from "../ui/garage.js";
 import { bindHud } from "../ui/hud.js";
 import { unlockAudio, announce, bindMute } from "./audio.js";
-import { createTraffic, restyleTraffic, stepTraffic } from "./traffic.js";
+import { createTraffic, restyleTraffic, stepTraffic, getRacePositions } from "./traffic.js";
 
 export async function startGame(canvas) {
   const mobile = isMobileUi();
@@ -57,6 +57,7 @@ export async function startGame(canvas) {
   let lastLap = 0;
   let lastSpeedCall = 0;
   let playerLivery = { name: "", bodyHex: "#ff2d6a" };
+  let lastRacePos = null;
 
   bindGarage({
     onLivery: (livery) => {
@@ -136,7 +137,17 @@ export async function startGame(canvas) {
       }
       syncCarMesh(car, vehicle, dt, input);
       updateChaseCamera(camera, vehicle, dt, track);
-      hud.update(vehicle);
+
+      // Race position + overtake detection
+      const positions = getRacePositions(traffic, vehicle);
+      const myPos = positions.findIndex((p) => p.isPlayer) + 1;
+      if (lastRacePos !== null && myPos < lastRacePos) {
+        announce("overtake", { livery: liveryName, kph: Math.abs(vehicle.speed) * 6.2, lap: vehicle.lap });
+      } else if (lastRacePos !== null && myPos > lastRacePos) {
+        announce("passed", { livery: liveryName, kph: Math.abs(vehicle.speed) * 6.2, lap: vehicle.lap });
+      }
+      lastRacePos = myPos;
+      hud.update(vehicle, myPos);
     } else {
       syncCarMesh(car, vehicle, dt, null);
       updateGarageCamera(camera, car, garageTime);

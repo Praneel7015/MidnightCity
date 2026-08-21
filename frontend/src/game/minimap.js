@@ -1,8 +1,17 @@
 import * as THREE from "three";
 
 export function createMinimap(track, vehicle) {
-  const span = 980;
-  const camera = new THREE.OrthographicCamera(-span, span, span, -span, 1, 400);
+  // Measure the full track extents so the orthographic camera fits it entirely
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const s of track.samples) {
+    minX = Math.min(minX, s.position.x);
+    maxX = Math.max(maxX, s.position.x);
+    minZ = Math.min(minZ, s.position.z);
+    maxZ = Math.max(maxZ, s.position.z);
+  }
+  const span = Math.max(maxX - minX, maxZ - minZ) * 0.58 + 80;
+
+  const camera = new THREE.OrthographicCamera(-span, span, span, -span, 1, 600);
   camera.layers.set(1);
 
   const chevron = new THREE.Mesh(
@@ -19,7 +28,8 @@ export function updateMinimap(minimap, vehicle) {
   const { camera, chevron } = minimap;
   const fx = Math.sin(vehicle.heading);
   const fz = Math.cos(vehicle.heading);
-  camera.position.set(vehicle.position.x, vehicle.position.y + 120, vehicle.position.z);
+  // Camera stays directly overhead, rotates with player heading (heading-up)
+  camera.position.set(vehicle.position.x, vehicle.position.y + 380, vehicle.position.z);
   camera.up.set(fx, 0, fz);
   camera.lookAt(vehicle.position.x, vehicle.position.y, vehicle.position.z);
 

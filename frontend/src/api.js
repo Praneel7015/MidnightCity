@@ -107,11 +107,54 @@ export async function requestCommentary({ kind, kph, lap, livery }) {
   } catch {
     /* fall through */
   }
-  const lines = {
-    start: "Engines hot. Midnight City is live.",
-    speed: "That's a heat run. Keep it planted.",
-    lap: "Lap in the books. Do it again, cleaner.",
-    reset: "Reset. The line is still yours.",
+  const pools = {
+    start: [
+      "Engines hot. Midnight City is live.",
+      "Lights out. The circuit is yours.",
+      "Drop in. The night doesn't wait.",
+      "Green light. Let's see what you've got.",
+      "Race is on. Keep it clean.",
+    ],
+    speed: [
+      "That's a heat run. Keep it planted.",
+      "You're flying. Don't lift now.",
+      "Full send. The city's a blur.",
+      "That line is on fire.",
+      "Top of the rev range. Beautiful.",
+    ],
+    lap: [
+      "Lap in the books. Do it again, cleaner.",
+      "Another one. You're getting faster.",
+      "Lap complete. The gap is closing.",
+      "That's the rhythm. Stay with it.",
+      "Clean lap. Keep that pace.",
+    ],
+    reset: [
+      "Reset. The line is still yours.",
+      "Back on track. Don't waste it.",
+      "Reset. Hit that apex this time.",
+      "You're back. Make it count.",
+      "Second chance. Use it.",
+    ],
+    overtake: [
+      "You passed one. Keep hunting.",
+      "Clear. Who's next?",
+      "That's a move. Stay aggressive.",
+      "One down. Eyes forward.",
+      "Beautiful pass. Push on.",
+    ],
+    passed: [
+      "They got you. Take it back.",
+      "You've been overtaken. Respond.",
+      "Don't let them gap you.",
+      "Hit back. Next corner.",
+      "They're gone. Or are they?",
+    ],
   };
-  return { line: lines[kind] || lines.start, kind, source: "fallback" };
+  const pool = pools[kind] || pools.start;
+  // Rotate through the pool to avoid repeating
+  requestCommentary._idx = requestCommentary._idx || {};
+  const i = (requestCommentary._idx[kind] || 0) % pool.length;
+  requestCommentary._idx[kind] = i + 1;
+  return { line: pool[i], kind, source: "fallback" };
 }

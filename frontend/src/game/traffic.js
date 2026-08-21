@@ -54,6 +54,16 @@ const NPC_PAINT = [
   },
 ];
 
+// Named racers — each NPC gets a permanent driver name shown in commentary
+const RACER_NAMES = [
+  "KAI", "REX", "NOVA", "ECHO", "VOSS",
+  "PIKE", "ZARA", "DUSK", "RUNE", "COLT",
+];
+
+// Speed tiers: some slower than player, some near-match, one or two faster
+// Player max is 58 units. Give NPCs a spread from 70% to 105% of that.
+const NPC_SPEED_TIERS = [42, 48, 52, 55, 57, 59, 61, 45, 50, 54];
+
 const _up = new THREE.Vector3(0, 1, 0);
 const _right = new THREE.Vector3();
 
@@ -74,20 +84,21 @@ export function createTraffic(scene, track, count = 10) {
     scene.add(marker);
 
     const dummy = createVehicle(new THREE.Vector3(), 0);
-    // Spread cars evenly around the track so the pack never bunches
     const t = (i / count) % 1;
-    // Mix of very slow, medium and fast — player can lap some and be lapped by others
-    const cruiseSpeeds = [12, 18, 24, 30, 36, 22, 28, 14, 20, 34];
-    const cruise = cruiseSpeeds[i % cruiseSpeeds.length];
+    const topSpeed = NPC_SPEED_TIERS[i % NPC_SPEED_TIERS.length];
     racers.push({
       car,
       marker,
       dummy,
       t,
       lane: (i % 2 === 0 ? 1 : -1) * (2.4 + (i % 3) * 1.2),
-      cruise,
-      pace: 0.88 + ((i * 3) % 5) * 0.06,
+      topSpeed,
+      // Each racer drives at 88–96% of their top speed normally
+      pace: 0.88 + ((i * 3) % 5) * 0.02,
       paint: NPC_PAINT[i % NPC_PAINT.length],
+      driverName: RACER_NAMES[i % RACER_NAMES.length],
+      lap: 0,
+      lastT: t,
     });
     applyLivery(car, racers[i].paint);
   }
@@ -107,14 +118,33 @@ export function restyleTraffic(traffic, playerLivery = {}) {
 
 export function stepTraffic(traffic, track, player, dt) {
   for (const r of traffic.racers) {
-    let speed = r.cruise * r.pace;
+    // Lap counting for NPCs
+    const prevT = r.lastT;
+    r.lastT = r.t;
+    if (prevT > 0.85 && r.t < 0.15) r.lap += 1;
+
+    let speed = r.topSpeed * r.pace;
+
     if (player) {
+      // Gap: positive means this racer is ahead of player on track
       let gap = r.t - (player.t || 0);
       gap = ((gap + 0.5) % 1) - 0.5;
-      if (gap > 0.2) speed *= 0.7;
-      else if (gap < -0.2) speed *= 1.38;
+
+      // Racers just ahead slow down slightly to stay raceable
+      if (gap > 0 && gap < 0.15) speed *= 0.88;
+      // Racers behind push harder to catch up
+      else if (gap < 0 && gap > -0.18) speed *= 1.08;
     }
-    speed = Math.min(MAX_SPEED * 0.9, Math.max(10, speed));
+
+    // NPC-to-NPC draft: slow down if another NPC is very close ahead
+    for (const other of traffic.racers) {
+      if (other === r) continue;
+      let d = other.t - r.t;
+      d = ((d + 0.5) % 1) - 0.5;
+      if (d > 0 && d < 0.015) { speed *= 0.9; break; }
+    }
+
+    speed = Math.min(MAX_SPEED * 1.08, Math.max(18, speed));
 
     r.t = (r.t + (speed * dt) / traffic.length) % 1;
     const pos = track.curve.getPointAt(r.t);
@@ -134,4 +164,23 @@ export function stepTraffic(traffic, track, player, dt) {
     r.marker.position.set(pos.x, pos.y + 2, pos.z);
     r.marker.rotation.y = r.dummy.heading;
   }
+}
+
+// Returns sorted array of { name, t, lap, isPlayer } — P1 first
+export function getRacePositions(traffic, player) {
+  const all = traffic.racers.map((r) => ({
+    name: r.driverName,
+    t: r.t,
+    lap: r.lap,
+    isPlayer: false,
+  }));
+  all.push({
+    name: "YOU",
+    t: player.t || 0,
+    lap: player.lap || 0,
+    isPlayer: true,
+  });
+  // Sort by lap desc, then track position desc
+  all.sort((a, b) => (b.lap - a.lap) || (b.t - a.t));
+  return all;
 }

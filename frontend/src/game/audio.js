@@ -4,6 +4,7 @@ let bgm;
 let unlocked = false;
 let muted = false;
 let lastSpeak = 0;
+const lastAnnounce = {};
 
 function banner(text) {
   const el = document.getElementById("callout");
@@ -71,6 +72,10 @@ export function speak(text) {
 }
 
 export async function announce(kind, stats = {}) {
+  const now = performance.now();
+  const cooldown = kind === "start" ? 0 : kind === "lap" ? 4000 : 8000;
+  if (lastAnnounce[kind] && now - lastAnnounce[kind] < cooldown) return;
+  lastAnnounce[kind] = now;
   unlockAudio();
   const data = await requestCommentary({
     kind,
