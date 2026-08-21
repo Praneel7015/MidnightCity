@@ -462,28 +462,41 @@ body[data-mode="race"] #hud {
     width: 110px;
   }
   #minimap-frame {
-    left: 12px;
-    right: auto;
-    top: 12px;
-    width: 118px;
-    height: 118px;
+    top: 8px;
+    right: 8px;
+    left: auto;
+    width: 100px;
+    height: 100px;
   }
-  /* Garage panel: sits above the touch bar, scrollable if needed */
+  /* Garage panel: sits above touch bar */
   .panel {
-    width: min(100vw - 24px, 420px);
-    left: 12px;
+    width: min(100vw - 16px, 420px);
+    left: 8px;
     bottom: 212px;
     max-height: calc(100dvh - 240px);
     overflow-y: auto;
+    padding: 0.75rem 0.9rem 0.85rem;
   }
-  /* HUD: sits in the top-left, well clear of touch controls */
+  /* Compact garage text on small screens */
+  #garage h2 { font-size: 1.15rem; }
+  .tagline { font-size: 0.82rem; margin-bottom: 0.5rem; }
+  .swatches { margin-bottom: 0.45rem; }
+  .custom-row { margin-bottom: 0.35rem; }
+
+  /* Race HUD: pin to top-left, below minimap */
   body[data-mode="race"] #hud {
     bottom: auto;
-    top: 140px;
-    left: 12px;
+    top: 116px;
+    left: 8px;
   }
-  /* Hide keyboard hint and credits on mobile — saves space */
-  .hint, .credit {
-    display: none;
+  /* Shrink HUD buttons on mobile so they don't cover the car */
+  #hud button {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
   }
+  .speedo span { font-size: 2.4rem; }
+  .times { gap: 0.55rem; font-size: 0.75rem; }
+
+  /* Hide keyboard hint and credits — saves space */
+  .hint, .credit { display: none; }
 }
