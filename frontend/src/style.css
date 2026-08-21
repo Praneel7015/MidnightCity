@@ -283,6 +283,7 @@ body {
   position: fixed;
   left: 22px;
   bottom: 22px;
+  top: auto;
   z-index: 5;
   gap: 0.7rem;
   align-items: flex-end;
@@ -359,7 +360,7 @@ body {
   right: 0;
   bottom: 0;
   left: 0;
-  height: 160px;
+  height: 200px;
   z-index: 6;
   justify-content: space-between;
   align-items: stretch;
@@ -455,6 +456,10 @@ body[data-mode="race"] #hud {
 @media (pointer: coarse), (max-width: 900px) {
   .touch {
     display: flex;
+    height: 200px;
+  }
+  .pedals {
+    width: 110px;
   }
   #minimap-frame {
     left: 12px;
@@ -463,14 +468,22 @@ body[data-mode="race"] #hud {
     width: 118px;
     height: 118px;
   }
+  /* Garage panel: sits above the touch bar, scrollable if needed */
   .panel {
     width: min(100vw - 24px, 420px);
     left: 12px;
-    bottom: 12px;
-    max-height: calc(100dvh - 32px);
+    bottom: 212px;
+    max-height: calc(100dvh - 240px);
     overflow-y: auto;
   }
+  /* HUD: sits in the top-left, well clear of touch controls */
   body[data-mode="race"] #hud {
-    bottom: 170px;
+    bottom: auto;
+    top: 140px;
+    left: 12px;
+  }
+  /* Hide keyboard hint and credits on mobile — saves space */
+  .hint, .credit {
+    display: none;
   }
 }
