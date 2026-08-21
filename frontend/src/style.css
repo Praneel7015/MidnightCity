@@ -277,10 +277,18 @@ body {
 
 .status,
 .hint,
-.credit {
+.credit,
+.feature-hint {
   margin: 0.35rem 0 0;
   font-size: 0.78rem;
   color: var(--muted);
+}
+
+.feature-hint {
+  font-size: 0.7rem;
+  color: var(--cyan);
+  opacity: 0.75;
+  letter-spacing: 0.04em;
 }
 
 .credit {

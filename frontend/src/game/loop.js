@@ -122,16 +122,24 @@ export async function startGame(canvas) {
       constrainToTrack(track, vehicle, dt);
       vehicle.lapTime += dt;
       updateLaps(vehicle);
+
+      // Compute once — reused for lap announce, speed announce, and overtake detection
+      const kph = Math.abs(vehicle.speed) * 5.7;
+      const positions = getRacePositions(traffic, vehicle);
+      const myPos = positions.findIndex((p) => p.isPlayer) + 1;
+      const total = positions.length;
+
       if (vehicle.lap > lastLap) {
         lastLap = vehicle.lap;
         announce("lap", {
           livery: liveryName,
-          kph: Math.abs(vehicle.speed) * 6.2,
+          kph,
           lap: vehicle.lap,
+          pos: myPos,
+          total,
         });
       }
-      const kph = Math.abs(vehicle.speed) * 6.2;
-      if (kph > 210 && garageTime - lastSpeedCall > 9) {
+      if (kph > 280 && garageTime - lastSpeedCall > 12) {
         lastSpeedCall = garageTime;
         announce("speed", { livery: liveryName, kph, lap: vehicle.lap });
       }
@@ -139,12 +147,14 @@ export async function startGame(canvas) {
       updateChaseCamera(camera, vehicle, dt, track);
 
       // Race position + overtake detection
-      const positions = getRacePositions(traffic, vehicle);
-      const myPos = positions.findIndex((p) => p.isPlayer) + 1;
       if (lastRacePos !== null && myPos < lastRacePos) {
-        announce("overtake", { livery: liveryName, kph: Math.abs(vehicle.speed) * 6.2, lap: vehicle.lap });
+        const passedDriver = positions[myPos]; // slot behind our new position
+        const opponent = passedDriver?.driverName || null;
+        announce("overtake", { livery: liveryName, kph, lap: vehicle.lap, pos: myPos, total, opponent });
       } else if (lastRacePos !== null && myPos > lastRacePos) {
-        announce("passed", { livery: liveryName, kph: Math.abs(vehicle.speed) * 6.2, lap: vehicle.lap });
+        const passer = positions[myPos - 2]; // slot ahead of our new position
+        const opponent = passer?.driverName || null;
+        announce("passed", { livery: liveryName, kph, lap: vehicle.lap, pos: myPos, total, opponent });
       }
       lastRacePos = myPos;
       hud.update(vehicle, myPos);

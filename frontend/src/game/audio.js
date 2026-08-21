@@ -82,6 +82,9 @@ export async function announce(kind, stats = {}) {
     kph: stats.kph || 0,
     lap: stats.lap || 0,
     livery: stats.livery || "Harbor Cyan",
+    pos: stats.pos || null,
+    total: stats.total || null,
+    opponent: stats.opponent || null,
   });
   speak(data.line);
   return data;

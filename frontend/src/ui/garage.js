@@ -85,15 +85,34 @@ export function bindGarage({ onLivery, onRace, onGarage, onTodayMood }) {
     onGarage?.();
   });
 
-  // Fetch tonight's build silently on load and reveal the button if available
+  // Show Tonight's Build button immediately as "pending" — hide only if fetch confirms no data
+  if (tonightBtn) {
+    tonightBtn.hidden = false;
+    tonightBtn.textContent = "Tonight's Build…";
+    tonightBtn.disabled = true;
+  }
+
+  // Fetch tonight's build silently on load
   requestToday().then((data) => {
-    if (!data?.livery) return;
-    if (tonightBtn) tonightBtn.hidden = false;
-    if (statusEl && data.mood?.condition) {
-      statusEl.textContent = `Tonight\u2019s conditions: ${data.mood.condition}`;
+    if (!tonightBtn) return;
+    if (data?.livery) {
+      tonightBtn.textContent = "Tonight's Build ✦";
+      tonightBtn.disabled = false;
+      if (statusEl && data.mood?.condition) {
+        statusEl.textContent = `Tonight\u2019s conditions: ${data.mood.condition}`;
+      }
+      if (data.mood) onTodayMood?.(data.mood);
+    } else {
+      tonightBtn.textContent = "Tonight's Build";
+      tonightBtn.disabled = false;
+      // Leave status as-is — agent hasn't run yet today
     }
-    if (data.mood) onTodayMood?.(data.mood);
-  }).catch(() => {});
+  }).catch(() => {
+    if (tonightBtn) {
+      tonightBtn.textContent = "Tonight's Build";
+      tonightBtn.disabled = false;
+    }
+  });
 
   syncControls(current);
   push();

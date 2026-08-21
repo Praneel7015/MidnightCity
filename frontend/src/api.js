@@ -100,34 +100,53 @@ export async function requestToday() {
   return null;
 }
 
-export async function requestCommentary({ kind, kph, lap, livery }) {
+export async function requestCommentary({ kind, kph, lap, livery, pos, total, opponent }) {
   try {
-    const data = await postJson("/commentary", { kind, kph, lap, livery });
+    const data = await postJson("/commentary", { kind, kph, lap, livery, pos, total, opponent });
     if (data?.line) return data;
   } catch {
     /* fall through */
   }
+
+  const p = pos || 1;
+  const t = total || 10;
+  const opp = opponent || "them";
+  const kphStr = kph ? `${Math.round(kph)} km/h` : null;
+  const lapStr = lap ? `Lap ${lap}` : null;
+
   const pools = {
     start: [
-      "Engines hot. Midnight City is live.",
-      "Lights out. The circuit is yours.",
-      "Drop in. The night doesn't wait.",
-      "Green light. Let's see what you've got.",
-      "Race is on. Keep it clean.",
+      `${livery || "Your ride"} is on the grid. Midnight City's all yours.`,
+      "Lights out. The circuit is live.",
+      "Drop in. The night doesn't care about second place.",
+      "Green light — let's find out what this thing can do.",
+      "Race is on. Twelve cars, one road. Go.",
     ],
-    speed: [
-      "That's a heat run. Keep it planted.",
-      "You're flying. Don't lift now.",
-      "Full send. The city's a blur.",
+    speed: kphStr ? [
+      `${kphStr}. Don't let off now.`,
+      `Running ${kphStr}. The city's a blur.`,
+      `${kphStr} and climbing. Top of the range.`,
+      `That's a heat run. ${kphStr} on the straight.`,
+      `Full send at ${kphStr}. Beautiful.`,
+    ] : [
+      "You're flying. Don't lift.",
+      "Top of the rev range.",
+      "Full send. Beautiful.",
       "That line is on fire.",
-      "Top of the rev range. Beautiful.",
+      "Heat run. Keep it planted.",
     ],
-    lap: [
-      "Lap in the books. Do it again, cleaner.",
+    lap: lapStr ? [
+      `${lapStr} done. P${p} of ${t}. Keep the pressure on.`,
+      `${lapStr} in the books. You're sitting P${p}.`,
+      `Clean lap — ${lapStr}. ${p === 1 ? "Lead is yours, defend it." : `${p - 1} car${p - 1 > 1 ? "s" : ""} ahead.`}`,
+      `${lapStr} complete. ${p <= 3 ? "Podium territory." : "Hunt 'em down."}`,
+      `Another lap. P${p} of ${t}. Stay with it.`,
+    ] : [
+      "Lap done. Keep that rhythm.",
       "Another one. You're getting faster.",
-      "Lap complete. The gap is closing.",
-      "That's the rhythm. Stay with it.",
-      "Clean lap. Keep that pace.",
+      "Lap complete. Stay focused.",
+      "Clean lap. Hold the pace.",
+      "The gap is closing. Push.",
     ],
     reset: [
       "Reset. The line is still yours.",
@@ -136,23 +155,35 @@ export async function requestCommentary({ kind, kph, lap, livery }) {
       "You're back. Make it count.",
       "Second chance. Use it.",
     ],
-    overtake: [
-      "You passed one. Keep hunting.",
+    overtake: opponent ? [
+      `${opp} is behind you. P${p} of ${t}. Keep going.`,
+      `Past ${opp}! P${p} now. Eyes forward.`,
+      `That's a move. ${opp} couldn't hold the line.`,
+      `Clean pass on ${opp}. P${p} of ${t}.`,
+      `${opp} in the mirror. Who's next?`,
+    ] : [
+      `P${p} of ${t}. Nice move — keep hunting.`,
+      `You moved up. P${p}. Stay aggressive.`,
       "Clear. Who's next?",
-      "That's a move. Stay aggressive.",
-      "One down. Eyes forward.",
-      "Beautiful pass. Push on.",
+      "That's a pass. Eyes forward.",
+      "Beautiful move. Push on.",
     ],
-    passed: [
-      "They got you. Take it back.",
+    passed: opponent ? [
+      `${opp} got you. You're P${p} now. Hit back.`,
+      `${opp} made the move. Respond — next corner.`,
+      `P${p} of ${t}. ${opp} found the gap. Close it.`,
+      `Don't let ${opp} gap you. Stay with them.`,
+      `${opp} is gone — or are they? P${p}. Go.`,
+    ] : [
+      `P${p} of ${t}. They got you. Take it back.`,
       "You've been overtaken. Respond.",
       "Don't let them gap you.",
       "Hit back. Next corner.",
-      "They're gone. Or are they?",
+      "They're ahead. For now.",
     ],
   };
+
   const pool = pools[kind] || pools.start;
-  // Rotate through the pool to avoid repeating
   requestCommentary._idx = requestCommentary._idx || {};
   const i = (requestCommentary._idx[kind] || 0) % pool.length;
   requestCommentary._idx[kind] = i + 1;
